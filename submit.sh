@@ -1,19 +1,15 @@
-# Notebooks
+#!/bin/bash
+#SBATCH --job-name=tdflow
+#SBATCH --partition=gpu
+#SBATCH --qos=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --mem=82G
+#SBATCH --time=80:00:00
 
-Notebooks are provided in the notebooks folder for sampling and visualizing the results for unconditional generation, conditional generation through diffusion guidance and finally for performing interpolations.
+module load Anaconda3/2022.05
 
-Pre-trained models are provided in the models folder.
+source activate td-flow
 
-
-# Repository
-
-This repository is built on top the open source repo https://github.com/NVlabs/edm
-
-# Training
-
-Example training command
-
-```
 python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --observed 0,0,0,1,1,1,1,1,1 --exist 1,1,1,1,1,1,1,1,1 --snap 25 --dump 25 \
     --precond eps --data_class QM9Dataset --qm9dataset_shuffle_node_ordering True \
@@ -26,16 +22,5 @@ python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --egnnmultiheadjump_detach_last_layer True --egnnmultiheadjump_rate_use_x0_pred True \
     --egnnmultiheadjump_n_attn_blocks 8 --egnnmultiheadjump_n_heads 8 \
     --egnnmultiheadjump_transformer_dim 128 --grad_conditioner_class MoleculeJump \
-    --moleculejump_grad_norm_clip 1.0 --wandb_dir /path/to/output \
-    --outdir /path/to/output/training-runs
-```
-
-# Environment
-
-```
-pytorch
-rdkit
-scipy
-click
-wandb
-```
+    --moleculejump_grad_norm_clip 1.0 --wandb_dir ./results/vanilla \
+    --outdir ./results/vanilla/training-runs

@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/train.py", line 18, in <module>
+    from training import training_loop
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/training_loop.py", line 23, in <module>
+    from training.sampler import StackedRandomGenerator
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/sampler.py", line 6, in <module>
+    from training.networks.egnn import EGNNMultiHeadJump
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/networks/__init__.py", line 2, in <module>
+    from .egnn import EGNNMultiHeadJump, EGNNMultiHeadJump_to_kwargs
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/networks/egnn.py", line 6, in <module>
+    from training.dataset.qm9 import get_cfg, get_dataset_info
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/dataset/__init__.py", line 2, in <module>
+    from .qm9 import QM9Dataset, QM9GraphicalStructure, qm9_datasets_to_kwargs, qm9_kwargs_gettable_from_dataset
+  File "/mnt/parscratch/users/acq22mc/exp/transdimensional-flow/training/dataset/qm9.py", line 17, in <module>
+    import matplotlib.pyplot as plt
+ModuleNotFoundError: No module named 'matplotlib'
