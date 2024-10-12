@@ -1,12 +1,12 @@
-import torch
 import math
+
 import numpy as np
+import torch
 from tqdm import tqdm
 
 
-
 # Class for DDPM continuous time related statistics
-class VP_SDE():
+class VP_SDE:
     def __init__(self, max_dim, beta_min, beta_max):
         super().__init__()
         self.max_dim = max_dim
@@ -15,14 +15,21 @@ class VP_SDE():
         self.beta_max = beta_max
 
     def get_beta_t(self, ts):
-        return (ts * self.beta_max + (1-ts) * self.beta_min).view(-1, 1).repeat(1, self.max_dim)
+        return (
+            (ts * self.beta_max + (1 - ts) * self.beta_min)
+            .view(-1, 1)
+            .repeat(1, self.max_dim)
+        )
 
     def get_sigma(self, times):
         """
-            returns sqrt(1-alpha_bar_t) in DDPM/SDE notation 
+        returns sqrt(1-alpha_bar_t) in DDPM/SDE notation
         """
-        log_term = -0.25 * times ** 2 * (self.beta_max - self.beta_min) - 0.5 * times * self.beta_min
-        alpha_squared = torch.exp(2*log_term)
+        log_term = (
+            -0.25 * times**2 * (self.beta_max - self.beta_min)
+            - 0.5 * times * self.beta_min
+        )
+        alpha_squared = torch.exp(2 * log_term)
         return torch.sqrt(1 - alpha_squared)
 
     def get_p0t_stats(self, st_batch, times):
@@ -30,13 +37,17 @@ class VP_SDE():
         # times (batch)
         minibatch = st_batch.get_flat_lats()
 
-        log_term = -0.25 * times ** 2 * (self.beta_max - self.beta_min) - 0.5 * times * self.beta_min
+        log_term = (
+            -0.25 * times**2 * (self.beta_max - self.beta_min)
+            - 0.5 * times * self.beta_min
+        )
         log_term_unsqueezed = log_term.view(
-            minibatch.shape[0],
-            *([1] * (len(minibatch.shape)-1))
+            minibatch.shape[0], *([1] * (len(minibatch.shape) - 1))
         )
         mean = torch.exp(log_term_unsqueezed) * minibatch
-        std = torch.sqrt(1 - torch.exp(2. * log_term_unsqueezed)).expand(*minibatch.shape)
+        std = torch.sqrt(1 - torch.exp(2.0 * log_term_unsqueezed)).expand(
+            *minibatch.shape
+        )
 
         return mean, std
 
@@ -44,33 +55,45 @@ class VP_SDE():
         # xt (B, D)
         # eps (B, D)
         # t (B)
-        log_term = -0.25 * t ** 2 * (self.beta_max - self.beta_min) - 0.5 * t * self.beta_min
-        log_term_unsqueezed = log_term.view(
-            xt.shape[0],
-            *([1] * (len(xt.shape)-1))
+        log_term = (
+            -0.25 * t**2 * (self.beta_max - self.beta_min)
+            - 0.5 * t * self.beta_min
         )
-        std = torch.sqrt(1 - torch.exp(2. * log_term_unsqueezed)).expand(*xt.shape)
+        log_term_unsqueezed = log_term.view(
+            xt.shape[0], *([1] * (len(xt.shape) - 1))
+        )
+        std = torch.sqrt(1 - torch.exp(2.0 * log_term_unsqueezed)).expand(
+            *xt.shape
+        )
 
         return (xt - std * eps) / torch.exp(log_term_unsqueezed)
 
     def predict_eps_from_x0_xt(self, xt_st_batch, x0, t):
         xt = xt_st_batch.get_flat_lats()
-        log_term = -0.25 * t ** 2 * (self.beta_max - self.beta_min) - 0.5 * t * self.beta_min
-        log_term_unsqueezed = log_term.view(
-            xt.shape[0],
-            *([1] * (len(xt.shape)-1))
+        log_term = (
+            -0.25 * t**2 * (self.beta_max - self.beta_min)
+            - 0.5 * t * self.beta_min
         )
-        std = torch.sqrt(1 - torch.exp(2. * log_term_unsqueezed)).expand(*xt.shape)
+        log_term_unsqueezed = log_term.view(
+            xt.shape[0], *([1] * (len(xt.shape) - 1))
+        )
+        std = torch.sqrt(1 - torch.exp(2.0 * log_term_unsqueezed)).expand(
+            *xt.shape
+        )
 
         return (xt - torch.exp(log_term_unsqueezed) * x0) / std
 
     def get_pxt2_xt1_stats(self, xt1_st_batch, t1, t2):
         # p(x_t2 | x_t1) gaussian stats
 
-        minibatch = xt1_st_batch.get_flat_lats() # (B, N)
+        minibatch = xt1_st_batch.get_flat_lats()  # (B, N)
 
-        alpha_t1 = torch.exp(-0.5 * t1**2 * (self.beta_max - self.beta_min) - t1 * self.beta_min)
-        alpha_t2 = torch.exp(-0.5 * t2**2 * (self.beta_max - self.beta_min) - t2 * self.beta_min)
+        alpha_t1 = torch.exp(
+            -0.5 * t1**2 * (self.beta_max - self.beta_min) - t1 * self.beta_min
+        )
+        alpha_t2 = torch.exp(
+            -0.5 * t2**2 * (self.beta_max - self.beta_min) - t2 * self.beta_min
+        )
         alpha_t1 = alpha_t1.view(-1, 1)
         alpha_t2 = alpha_t2.view(-1, 1)
 
@@ -80,26 +103,20 @@ class VP_SDE():
         return mean, std
 
 
-
-
-
-
-
-
-class ForwardRate():
+class ForwardRate:
     def get_rate(self, dims, ts):
         """
-            Gets the rate evaluated at times ts (B,) 
-            Dims is ignored
+        Gets the rate evaluated at times ts (B,)
+        Dims is ignored
         """
         raise NotImplementedError
 
 
-
 class StateIndependentForwardRate(ForwardRate):
     """
-        Generic class representing a state independent forward rate function 
+    Generic class representing a state independent forward rate function
     """
+
     def __init__(self, max_dim):
         self.max_dim = max_dim
         self.max_num_deletions = self.max_dim - 1
@@ -116,7 +133,7 @@ class StateIndependentForwardRate(ForwardRate):
 
     def get_rate_integral(self, ts):
         """
-            Gets the integral of the rate between time 0 and ts (B,) 
+        Gets the integral of the rate between time 0 and ts (B,)
         """
         raise NotImplementedError
 
@@ -132,8 +149,6 @@ class StateIndependentForwardRate(ForwardRate):
         return dims_t2
 
 
-
-
 class StepForwardRate(StateIndependentForwardRate):
     def __init__(self, max_dim, rate_cut_t):
         super().__init__(max_dim)
@@ -142,9 +157,16 @@ class StepForwardRate(StateIndependentForwardRate):
         assert self.rate_cut_t < 1
 
     def get_scalar(self):
-        T = self.rate_cut_t # the step change point
+        T = self.rate_cut_t  # the step change point
         c = self.max_num_deletions
-        return (2 * (1-T) * c + self.std_mult**2 * (1-T) + math.sqrt((-2 * (1-T) * c - self.std_mult**2 * (1-T))**2 - 4 * (1-T)**2 * c**2   )) / (2 * (1-T)**2 )
+        return (
+            2 * (1 - T) * c
+            + self.std_mult**2 * (1 - T)
+            + math.sqrt(
+                (-2 * (1 - T) * c - self.std_mult**2 * (1 - T)) ** 2
+                - 4 * (1 - T) ** 2 * c**2
+            )
+        ) / (2 * (1 - T) ** 2)
 
     def get_rate(self, dims, ts):
         T = self.rate_cut_t
@@ -153,7 +175,6 @@ class StepForwardRate(StateIndependentForwardRate):
     def get_rate_integral(self, ts):
         T = self.rate_cut_t
         return (ts - T) * self.get_scalar() * (ts > T).long() + self.offset * ts
-
 
 
 class ConstForwardRate(StateIndependentForwardRate):
@@ -165,26 +186,29 @@ class ConstForwardRate(StateIndependentForwardRate):
         try:
             if self.scalar is None:
                 c = self.max_num_deletions
-                return (2 * c + self.std_mult**2 + math.sqrt((self.std_mult**2 + 2 * c)**2 - 4 * c**2)) / 2
+                return (
+                    2 * c
+                    + self.std_mult**2
+                    + math.sqrt((self.std_mult**2 + 2 * c) ** 2 - 4 * c**2)
+                ) / 2
             else:
                 return self.scalar
         except AttributeError:
-            print("ConstForwardRate: scalar not set. Presumably because old checkpoint was loaded. Reverting to old method. TODO delete this exception later.")
+            print(
+                "ConstForwardRate: scalar not set. Presumably because old checkpoint was loaded. Reverting to old method. TODO delete this exception later."
+            )
             c = self.max_num_deletions
-            return (2 * c + self.std_mult**2 + math.sqrt((self.std_mult**2 + 2 * c)**2 - 4 * c**2)) / 2
+            return (
+                2 * c
+                + self.std_mult**2
+                + math.sqrt((self.std_mult**2 + 2 * c) ** 2 - 4 * c**2)
+            ) / 2
 
     def get_rate(self, dims, ts):
         return self.get_scalar() * torch.ones_like(ts)
 
     def get_rate_integral(self, ts):
         return self.get_scalar() * ts
-
-
-
-
-
-
-
 
 
 def get_rate_using_x0_pred(x0_dim_logits, xt_dims, forward_rate, ts, max_dim):
@@ -203,31 +227,42 @@ def get_rate_using_x0_pred(x0_dim_logits, xt_dims, forward_rate, ts, max_dim):
         # ...
         # only allow through [xt_dims[idx] - max_dim - 1 : ]
         idx_start = xt_dims[idx] - max_dim - 1
-        x0_dim_probs[idx, idx_start:] = torch.softmax(x0_dim_logits[idx, idx_start:], dim=0)
+        x0_dim_probs[idx, idx_start:] = torch.softmax(
+            x0_dim_logits[idx, idx_start:], dim=0
+        )
 
     # calculation is
     # rev_rate = f_rate \sum_{d_x0} ( p(d_x + 1 | d_x0) / p(d_x | d_x0) ) * p(d_x0 | x)
     # x0_dim_probs = p(d_x0 | x) shape (B, max_dim)
     # ratios = p(d_x + 1 | d_x0) / p(d_x | d_x0) shape (B, max_dim)
-    dx0range = torch.arange(1, max_dim+1, device=device)
+    dx0range = torch.arange(1, max_dim + 1, device=device)
     ratios = torch.zeros((B, max_dim), device=device)
-    f_rate_integrals = forward_rate.get_rate_integral(ts) # (B,)
-    
-    truncation = max_dim*2
-    dx0_truncation_array = torch.arange(0, truncation, device=device).view(1, truncation) + \
-        torch.arange(0, max_dim, device=device).view(max_dim, 1)
+    f_rate_integrals = forward_rate.get_rate_integral(ts)  # (B,)
+
+    truncation = max_dim * 2
+    dx0_truncation_array = torch.arange(0, truncation, device=device).view(
+        1, truncation
+    ) + torch.arange(0, max_dim, device=device).view(max_dim, 1)
 
     for idx in range(B):
         if xt_dims[idx] > 1:
-            ratios[idx, :] = (1/f_rate_integrals[idx]) * (dx0range - xt_dims[idx])
+            ratios[idx, :] = (1 / f_rate_integrals[idx]) * (
+                dx0range - xt_dims[idx]
+            )
             ratios[idx, ratios[idx, :] < 0] = 0.0
         else:
-            dim1_presum_logprobs = torch.distributions.poisson.Poisson(f_rate_integrals[idx]).log_prob(dx0_truncation_array)
+            dim1_presum_logprobs = torch.distributions.poisson.Poisson(
+                f_rate_integrals[idx]
+            ).log_prob(dx0_truncation_array)
             assert dim1_presum_logprobs.shape == (max_dim, truncation)
-            dim1_logprobs = torch.logsumexp(dim1_presum_logprobs, dim=1) # (max_dim,)
+            dim1_logprobs = torch.logsumexp(
+                dim1_presum_logprobs, dim=1
+            )  # (max_dim,)
 
-            dim2_logprobs = torch.distributions.poisson.Poisson(f_rate_integrals[idx]).log_prob(
-                torch.arange(-1, max_dim-1, device=device).clamp(min=0)
+            dim2_logprobs = torch.distributions.poisson.Poisson(
+                f_rate_integrals[idx]
+            ).log_prob(
+                torch.arange(-1, max_dim - 1, device=device).clamp(min=0)
             )
             assert dim2_logprobs.shape == (max_dim,)
             # the first element is the probability of x_t dim 2 whilst x_0 dim =1 so set to zero
@@ -237,4 +272,6 @@ def get_rate_using_x0_pred(x0_dim_logits, xt_dims, forward_rate, ts, max_dim):
 
             ratios[idx, dx0range < xt_dims[idx]] = 0.0
 
-    return forward_rate.get_rate(dims=None, ts=ts) * torch.sum(ratios * x0_dim_probs, dim=1)
+    return forward_rate.get_rate(dims=None, ts=ts) * torch.sum(
+        ratios * x0_dim_probs, dim=1
+    )

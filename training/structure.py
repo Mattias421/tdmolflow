@@ -1,24 +1,28 @@
-import torch
 import numpy as np
+import torch
 
 
-class StructuredDataBatch():
-    def __init__(self, tuple_batch, dims, observed, exist, is_onehot, graphical_structure):
+class StructuredDataBatch:
+    def __init__(
+        self, tuple_batch, dims, observed, exist, is_onehot, graphical_structure
+    ):
         """
-            Container for a batch of data alongside structural information
+        Container for a batch of data alongside structural information
 
-            tuple_batch:         tuple of tensors containing the batch of data. Batch dimension B. Length of tuple (K)
-            dims:                tensor of length (B,) containing the dimension of each datapoint in the batch
-                                    Note that this is not strictly the dimension of the flattened tensor but is a
-                                    problem dependent dimension index that dictates which 'dimension class' the datapoint is
-            observed:            numpy array (K,) of 0 or 1 for whether that tensor is observed 
-            exist:               list (K,) whether a tensor 'exists'
-            is_onehot            list (K,) of 0 or 1 for whether that tensor is onehot encoded
-            shapes               list (K,) of shapes for each tensor in the datapoint
-            graphical_structure  an object describing dataset specific graphical_structure
+        tuple_batch:         tuple of tensors containing the batch of data. Batch dimension B. Length of tuple (K)
+        dims:                tensor of length (B,) containing the dimension of each datapoint in the batch
+                                Note that this is not strictly the dimension of the flattened tensor but is a
+                                problem dependent dimension index that dictates which 'dimension class' the datapoint is
+        observed:            numpy array (K,) of 0 or 1 for whether that tensor is observed
+        exist:               list (K,) whether a tensor 'exists'
+        is_onehot            list (K,) of 0 or 1 for whether that tensor is onehot encoded
+        shapes               list (K,) of shapes for each tensor in the datapoint
+        graphical_structure  an object describing dataset specific graphical_structure
         """
         self.exist = np.array(exist, dtype=np.uint8)
-        self.observed = np.array([o for o, e in zip(observed, self.exist) if e], dtype=np.uint8)
+        self.observed = np.array(
+            [o for o, e in zip(observed, self.exist) if e], dtype=np.uint8
+        )
         self.latent = 1 - self.observed
         self.is_onehot = [oh for oh, e in zip(is_onehot, self.exist) if e]
         self.gs = graphical_structure
@@ -35,24 +39,39 @@ class StructuredDataBatch():
 
     def create_repeated_copy(self, K):
         copy = self.create_copy(self)
-        copy.tuple_batch = tuple(torch.cat([t for _ in range(K)], dim=0) for t in self.tuple_batch)
+        copy.tuple_batch = tuple(
+            torch.cat([t for _ in range(K)], dim=0) for t in self.tuple_batch
+        )
         copy._dims = torch.cat([self._dims for _ in range(K)], dim=0)
         return copy
 
     @classmethod
     def create_copy(cls, original):
         tuple_batch_copy = tuple(t.clone() for t in original.tuple_batch)
-        return StructuredDataBatch(tuple_batch_copy, original._dims.clone(), original.observed, original.exist, original.is_onehot, original.gs)
-
+        return StructuredDataBatch(
+            tuple_batch_copy,
+            original._dims.clone(),
+            original.observed,
+            original.exist,
+            original.is_onehot,
+            original.gs,
+        )
 
     def get_tuple_batch(self):
         return self.tuple_batch
-    
+
     def get_flat_batch(self, select):
-        return torch.cat([t.flatten(start_dim=1) for t, s in zip(self.tuple_batch, select) if s], dim=1)
+        return torch.cat(
+            [
+                t.flatten(start_dim=1)
+                for t, s in zip(self.tuple_batch, select)
+                if s
+            ],
+            dim=1,
+        )
 
     def get_flat_lats(self):
-        return self.get_flat_batch(1-self.observed)
+        return self.get_flat_batch(1 - self.observed)
 
     def get_tuple_obs(self):
         return tuple(t for t, o in zip(self.tuple_batch, self.observed) if o)
@@ -63,7 +82,11 @@ class StructuredDataBatch():
     @property
     def latent_dim(self):
         # return sum(np.prod(shape) for shape, o in zip(self.gs.shapes_with_onehot(self.max_dim), self.observed) if not o)
-        return sum(np.prod(shape) for shape, o in zip(self.gs.shapes_with_onehot(), self.observed) if not o)
+        return sum(
+            np.prod(shape)
+            for shape, o in zip(self.gs.shapes_with_onehot(), self.observed)
+            if not o
+        )
 
     def to(self, device):
         # move tensors to device
@@ -80,7 +103,9 @@ class StructuredDataBatch():
 
     def delete_dims(self, new_dims):
         # deletes some dimensions of the data so that the output data has dimensions given by new_dims
-        self.tuple_batch = self.gs.remove_problem_dims(self.tuple_batch, new_dims)
+        self.tuple_batch = self.gs.remove_problem_dims(
+            self.tuple_batch, new_dims
+        )
         self._dims = new_dims
 
         # self.max_dim = self.dims.max()
@@ -92,13 +117,19 @@ class StructuredDataBatch():
         for shape, l in zip(self.gs.shapes_with_onehot(), self.latent):
             if l:
                 numel = np.prod(shape)
-                t, new_flat_lats = new_flat_lats[:, :numel], new_flat_lats[:, numel:]
+                t, new_flat_lats = (
+                    new_flat_lats[:, :numel],
+                    new_flat_lats[:, numel:],
+                )
                 data.append(t.reshape(-1, *shape))
             else:
                 data.append(None)
         assert new_flat_lats.shape[1] == 0
 
-        self.tuple_batch = tuple(tb if o else d for d, tb, o in zip(data, self.tuple_batch, self.observed))
+        self.tuple_batch = tuple(
+            tb if o else d
+            for d, tb, o in zip(data, self.tuple_batch, self.observed)
+        )
 
     def add_dim_where_not_max(self):
         self.set_dims(self._dims + (self._dims < self.gs.max_problem_dim))
@@ -119,9 +150,10 @@ class StructuredDataBatch():
     def delete_one_dim(self):
         # self.max_dim = self.max_dim - 1
         self._dims = self._dims - 1
-        self.tuple_batch = self.gs.remove_problem_dims(self.tuple_batch, self._dims)
+        self.tuple_batch = self.gs.remove_problem_dims(
+            self.tuple_batch, self._dims
+        )
         # self.tuple_batch = self.gs.strip_padding(self.tuple_batch, self.max_dim)
-    
 
     def get_mask(self, B, include_onehot_channels, include_obs):
         # gets a flat mask that is 1 for dimensions corresponding to a non zeroed out dimension
@@ -132,7 +164,12 @@ class StructuredDataBatch():
 
         data = []
         # for shape, e, oh, o in zip(self.gs.shapes_with_onehot(self.max_dim), self.exist, self.is_onehot, self.observed):
-        for shape, e, oh, o in zip(self.gs.shapes_with_onehot(), self.exist, self.is_onehot, self.observed):
+        for shape, e, oh, o in zip(
+            self.gs.shapes_with_onehot(),
+            self.exist,
+            self.is_onehot,
+            self.observed,
+        ):
 
             if o and not include_obs:
                 data.append(None)
@@ -152,12 +189,21 @@ class StructuredDataBatch():
         if include_obs:
             return torch.cat([t.flatten(start_dim=1) for t in data], dim=1)
         else:
-            return torch.cat([t.flatten(start_dim=1) for t, o in zip(data, self.observed) if not o], dim=1)
+            return torch.cat(
+                [
+                    t.flatten(start_dim=1)
+                    for t, o in zip(data, self.observed)
+                    if not o
+                ],
+                dim=1,
+            )
 
-    def get_next_dim_deleted_mask(self, B, include_onehot_channels, include_obs):
+    def get_next_dim_deleted_mask(
+        self, B, include_onehot_channels, include_obs
+    ):
         """
-            Gets a flat mask that is 1s for dimensions that would be deleted or set to 0 if we were to move down
-            one dimension class 
+        Gets a flat mask that is 1s for dimensions that would be deleted or set to 0 if we were to move down
+        one dimension class
         """
         outer_mask = self.get_mask(B, include_onehot_channels, include_obs)
         self._dims = self._dims - 1
@@ -167,8 +213,8 @@ class StructuredDataBatch():
 
     def get_next_dim_added_mask(self, B, include_onehot_channels, include_obs):
         """
-            Gets a flat mask that is 1s for dimensions that would be added if we were to move up
-            one dimension class
+        Gets a flat mask that is 1s for dimensions that would be added if we were to move up
+        one dimension class
         """
         inner_mask = self.get_mask(B, include_onehot_channels, include_obs)
         self._dims = self._dims + 1
@@ -178,11 +224,11 @@ class StructuredDataBatch():
 
     def convert_problem_dim_to_tensor_dim(self, problem_dim_data):
         """
-            problem_dim_data (B, problem_dim)
-            e.g. for matrix factorization problem_dim is say 4 for up to 4x4 matrices
-            but tensor dim is around 112 for all the flattened matrices
-            output (B, tensor_dim) with values for each problem dim repeated an 
-            appropriate amount of times for each correspondance
+        problem_dim_data (B, problem_dim)
+        e.g. for matrix factorization problem_dim is say 4 for up to 4x4 matrices
+        but tensor dim is around 112 for all the flattened matrices
+        output (B, tensor_dim) with values for each problem dim repeated an
+        appropriate amount of times for each correspondance
         """
         # populate an empty st_batch of dim 1 with all B, 0 values
         # then flatten
@@ -195,18 +241,24 @@ class StructuredDataBatch():
         # then get dim below that mask and all these elements get set to B, 2
 
         B = problem_dim_data.shape[0]
-        
+
         tmp = StructuredDataBatch.create_copy(self)
         tmp.set_dims(tmp.gs.max_problem_dim * torch.ones_like(tmp._dims))
 
         problem_dim_data_counter = -1
         while True:
-            outer_mask = tmp.get_mask(B, include_obs=False, include_onehot_channels=True)
+            outer_mask = tmp.get_mask(
+                B, include_obs=False, include_onehot_channels=True
+            )
             tmp._dims = tmp._dims - 1
-            inner_mask = tmp.get_mask(B, include_obs=False, include_onehot_channels=True)
+            inner_mask = tmp.get_mask(
+                B, include_obs=False, include_onehot_channels=True
+            )
             mask = outer_mask - inner_mask
             flat_lats = tmp.get_flat_lats()
-            flat_lats = (1-mask) * flat_lats + mask * problem_dim_data[:, problem_dim_data_counter].view(-1, 1)
+            flat_lats = (1 - mask) * flat_lats + mask * problem_dim_data[
+                :, problem_dim_data_counter
+            ].view(-1, 1)
             tmp.set_flat_lats(flat_lats)
 
             problem_dim_data_counter = problem_dim_data_counter - 1
@@ -217,31 +269,36 @@ class StructuredDataBatch():
         return tmp.get_flat_lats()
 
 
-
-
-
-
-
-
-
-class Structure():
-    def __init__(self, exist, observed, dataset):  #, shapes=None, example=None, names=None):
+class Structure:
+    def __init__(
+        self, exist, observed, dataset
+    ):  # , shapes=None, example=None, names=None):
         """
         Stores metadata about tensor shapes and observedness. One of shapes or example (without batch dimension)
         must be provided to extract the shapes from.
         """
         self.exist = np.array(exist, dtype=np.uint8)
-        self.observed = np.array([o for o, e in zip(observed, self.exist) if e], dtype=np.uint8)
+        self.observed = np.array(
+            [o for o, e in zip(observed, self.exist) if e], dtype=np.uint8
+        )
         self.latent = 1 - self.observed
-        self.is_onehot = [oh for oh, e in zip(dataset.is_onehot, self.exist) if e]
-        names = dataset.names if hasattr(dataset, "names") else [f"tensor_{i}" for i in range(len(self.shapes))]
+        self.is_onehot = [
+            oh for oh, e in zip(dataset.is_onehot, self.exist) if e
+        ]
+        names = (
+            dataset.names
+            if hasattr(dataset, "names")
+            else [f"tensor_{i}" for i in range(len(self.shapes))]
+        )
         self.names = [n for n, e in zip(names, self.exist) if e]
         print("Created structure with observedness", self.observed)
         if hasattr(dataset, "graphical_structure"):
             self.graphical_structure = dataset.graphical_structure
 
     def set_varying_problem_dims(self, problem_dims, batch_max_problem_dim):
-        self.graphical_structure.set_varying_problem_dims(problem_dims, batch_max_problem_dim)
+        self.graphical_structure.set_varying_problem_dims(
+            problem_dims, batch_max_problem_dim
+        )
         self.shapes = self.graphical_structure.shapes
 
     def add_one_to_problem_dims(self):
@@ -268,7 +325,9 @@ class Structure():
                 else:
                     existing_data.append(torch.ones((B, *shape)))
 
-        existing_data = self.graphical_structure.remove_problem_dims(existing_data)
+        existing_data = self.graphical_structure.remove_problem_dims(
+            existing_data
+        )
 
         # return self.flatten_latents(existing_data, contains_marg=False)
         if include_obs:
@@ -276,29 +335,46 @@ class Structure():
         else:
             return self.flatten_latents(existing_data, contains_marg=False)
 
-
-    def get_exist_mask_after_deleting_dim(self, include_obs, include_onehot_channels):
+    def get_exist_mask_after_deleting_dim(
+        self, include_obs, include_onehot_channels
+    ):
         problem_dims = self.graphical_structure.problem_dims
         reduced_dims = (self.graphical_structure.problem_dims - 1).clamp(min=1)
-        self.set_varying_problem_dims(reduced_dims, self.graphical_structure.batch_max_problem_dim)
-        exist_after_deleting_next_mask = self.get_exist_mask(include_obs, include_onehot_channels)
-        self.set_varying_problem_dims(problem_dims, self.graphical_structure.batch_max_problem_dim)
+        self.set_varying_problem_dims(
+            reduced_dims, self.graphical_structure.batch_max_problem_dim
+        )
+        exist_after_deleting_next_mask = self.get_exist_mask(
+            include_obs, include_onehot_channels
+        )
+        self.set_varying_problem_dims(
+            problem_dims, self.graphical_structure.batch_max_problem_dim
+        )
         return exist_after_deleting_next_mask
 
     def get_next_dim_deleted_mask(self, include_obs, include_onehot_channels):
-        return self.get_exist_mask(include_obs, include_onehot_channels) - self.get_exist_mask_after_deleting_dim(include_obs, include_onehot_channels)
+        return self.get_exist_mask(
+            include_obs, include_onehot_channels
+        ) - self.get_exist_mask_after_deleting_dim(
+            include_obs, include_onehot_channels
+        )
 
     def get_next_dim_added_mask(self, include_obs, include_onehot_channels):
         """
-            Gets the mask for new dimensions that get added when increaseing the problem dimension by 1 
-            Assumes batch_max_problem_dim is big enough to hold the bigger mask
+        Gets the mask for new dimensions that get added when increaseing the problem dimension by 1
+        Assumes batch_max_problem_dim is big enough to hold the bigger mask
         """
         current_problem_dims = self.graphical_structure.problem_dims
-        current_batch_max_problem_dim = self.graphical_structure.batch_max_problem_dim
+        current_batch_max_problem_dim = (
+            self.graphical_structure.batch_max_problem_dim
+        )
 
-        self.set_varying_problem_dims(current_problem_dims+1, current_batch_max_problem_dim)
+        self.set_varying_problem_dims(
+            current_problem_dims + 1, current_batch_max_problem_dim
+        )
         big_mask = self.get_exist_mask(include_obs, include_onehot_channels)
-        self.set_varying_problem_dims(current_problem_dims, current_batch_max_problem_dim)
+        self.set_varying_problem_dims(
+            current_problem_dims, current_batch_max_problem_dim
+        )
         small_mask = self.get_exist_mask(include_obs, include_onehot_channels)
 
         return big_mask - small_mask
@@ -309,19 +385,21 @@ class Structure():
 
     @staticmethod
     def get_flattened(batch, select):
-        return torch.cat([t.flatten(start_dim=1) for t, s in zip(batch, select) if s], dim=1)
+        return torch.cat(
+            [t.flatten(start_dim=1) for t, s in zip(batch, select) if s], dim=1
+        )
 
     def flatten_batch(self, batch, contains_marg):
         if contains_marg:
             batch = [t for t, e in zip(batch, self.exist) if e]
-        lats = self.get_flattened(batch, 1-self.observed)
+        lats = self.get_flattened(batch, 1 - self.observed)
         obs = tuple(t for t, o in zip(batch, self.observed) if o)
         return lats, obs
 
     def flatten_latents(self, batch, contains_marg):
         if contains_marg:
             batch = [t for t, e in zip(batch, self.exist) if e]
-        return self.get_flattened(batch, 1-self.observed)
+        return self.get_flattened(batch, 1 - self.observed)
 
     def unflatten_batch(self, lats, obs, pad_marg):
         data = []
@@ -348,30 +426,45 @@ class Structure():
 
     @property
     def latent_dim(self):
-        return sum(np.prod(shape) for shape, o in zip(self.shapes, self.observed) if not o)
+        return sum(
+            np.prod(shape)
+            for shape, o in zip(self.shapes, self.observed)
+            if not o
+        )
 
 
-
-class StructuredArgument():
-    def __init__(self, arg, structure, dtype=torch.float32): 
+class StructuredArgument:
+    def __init__(self, arg, structure, dtype=torch.float32):
         # arg should be a list of scalars. If it is a single scalar, or list of length 1, it is broadcasted.
         if type(arg) in [int, float]:
             arg = (arg,)
         if len(arg) == 1:
             arg = arg * len(structure.exist)
         assert len(arg) == len(structure.exist)
-        arg = [a for a, e in zip(arg, structure.exist) if e]  # filter to only existent tensors
+        arg = [
+            a for a, e in zip(arg, structure.exist) if e
+        ]  # filter to only existent tensors
         self.tensorwise_arg = arg
         self.structure = structure
         self.dtype = dtype
 
     @property
     def lats(self):
-        arg = tuple([a*torch.ones((1, *shape), dtype=self.dtype) for a, shape in zip(self.tensorwise_arg, self.structure.shapes)])
+        arg = tuple(
+            [
+                a * torch.ones((1, *shape), dtype=self.dtype)
+                for a, shape in zip(self.tensorwise_arg, self.structure.shapes)
+            ]
+        )
         return self.structure.flatten_latents(arg, contains_marg=False)
 
     @property
     def obs(self):
-        arg = tuple([a*torch.ones((1, *shape), dtype=self.dtype) for a, shape in zip(self.tensorwise_arg, self.structure.shapes)])
+        arg = tuple(
+            [
+                a * torch.ones((1, *shape), dtype=self.dtype)
+                for a, shape in zip(self.tensorwise_arg, self.structure.shapes)
+            ]
+        )
         _, obs = self.structure.flatten_batch(arg, contains_marg=False)
         return obs

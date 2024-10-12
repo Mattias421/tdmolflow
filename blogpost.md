@@ -2,7 +2,7 @@
 
 
 Molecules are important for drug and material discovery. Being able to model the distribution of 3D molecules is helpful tool to find desirable molecules and inference their likelihood. The highest quality methods to date involve *conditional flow-matching*, which learns to interpolate random-noise samples into molecule samples. Although this method works well, the number of atoms in the molecule to generate must be known at inference time, removing an important factor of molecule generation from the flow-matching process. This problem has been addressed for similar yet inferior *diffusion* models in the form of *Trans-Dimensional Generative Modeling via Jump Diffusion Models*, which model both state and dimension within the same framework. This leads to the question: can we extend the benefits of jump-diffusion models to flow-matching models?
-This serves as the foundations for conditional generation which could be used to further assist molecule discovery e.g. generating molecules that match a given text description. 
+This serves as the foundations for conditional generation which could be used to further assist molecule discovery e.g. generating molecules that match a given text description.
 
 
 **TL:DR:** Generating molecules is better when jointly modelling atom state and number of atoms, but this hasn't been applied to SOTA methods (molecule flow-matching). Doing so would lead to a solid foundation for more complex models e.g. text-to-mol.

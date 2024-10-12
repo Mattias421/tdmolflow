@@ -10,6 +10,9 @@ module load Anaconda3/2022.05
 
 source activate td-flow
 
+export WANDB_ENTITY=mattias421
+export WANDB_PROJECT=tdmolflow
+
 python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --observed 0,0,0,1,1,1,1,1,1 --exist 1,1,1,1,1,1,1,1,1 --snap 25 --dump 25 \
     --precond eps --data_class QM9Dataset --qm9dataset_shuffle_node_ordering True \

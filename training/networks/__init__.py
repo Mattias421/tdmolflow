@@ -1,9 +1,10 @@
-import torch
-from .egnn import EGNNMultiHeadJump, EGNNMultiHeadJump_to_kwargs
 import itertools as it
 
+import torch
 
-#----------------------------------------------------------------------------
+from .egnn import EGNNMultiHeadJump, EGNNMultiHeadJump_to_kwargs
+
+# ----------------------------------------------------------------------------
 # Improved preconditioning proposed in the paper "Elucidating the Design
 # Space of Diffusion-Based Generative Models" (EDM).
 
@@ -63,44 +64,58 @@ import itertools as it
 
 # -------------------------
 class EpsilonPrecond(torch.nn.Module):
-    def __init__(self, structure, model_type,
-                 use_fp16=-1, # not used but needed for compatibility
-                 **model_kwargs):
+    def __init__(
+        self,
+        structure,
+        model_type,
+        use_fp16=-1,  # not used but needed for compatibility
+        **model_kwargs,
+    ):
         super().__init__()
         self.structure = structure
         self.model = globals()[model_type](**model_kwargs, structure=structure)
 
-    def forward(self, st_batch, ts, predict='eps', **model_kwargs):
-        xt = st_batch.get_flat_lats()  # TODO mode to relevant if statement below
+    def forward(self, st_batch, ts, predict="eps", **model_kwargs):
+        xt = (
+            st_batch.get_flat_lats()
+        )  # TODO mode to relevant if statement below
         eps, *others = self.model(st_batch, ts, **model_kwargs)
-        if predict == 'eps':
+        if predict == "eps":
             return eps, *others
-        elif predict == 'x0':
+        elif predict == "x0":
             x0 = self.noise_schedule.predict_x0_from_xt(xt, eps, ts)
             return x0, *others
         else:
-            raise NotImplementedError(f'predict {predict} not implemented')
+            raise NotImplementedError(f"predict {predict} not implemented")
 
 
 class X0Precond(EpsilonPrecond):
-    def forward(self, st_batch, ts, predict='x0', **model_kwargs):
-        xt = st_batch.get_flat_lats()  # TODO mode to relevant if statement below
-        x0, *others = super().forward(st_batch, ts, predict='eps', **model_kwargs)  # predict='eps' tells EpsilonPrecond to return raw network output
-        if predict == 'x0':
+    def forward(self, st_batch, ts, predict="x0", **model_kwargs):
+        xt = (
+            st_batch.get_flat_lats()
+        )  # TODO mode to relevant if statement below
+        x0, *others = super().forward(
+            st_batch, ts, predict="eps", **model_kwargs
+        )  # predict='eps' tells EpsilonPrecond to return raw network output
+        if predict == "x0":
             return x0, *others
-        elif predict == 'eps':
+        elif predict == "eps":
             eps = self.noise_schedule.predict_eps_from_x0_xt(st_batch, x0, ts)
             return eps, *others
 
 
 class EDMPrecond(EpsilonPrecond):
-    def forward(self, st_batch, ts, predict='x0', **model_kwargs):
-        xt = st_batch.get_flat_lats()  # TODO mode to relevant if statement below
-        thing, *others = super().forward(st_batch, ts, predict='eps', **model_kwargs)  # predict='eps' tells EpsilonPrecond to return raw network output
+    def forward(self, st_batch, ts, predict="x0", **model_kwargs):
+        xt = (
+            st_batch.get_flat_lats()
+        )  # TODO mode to relevant if statement below
+        thing, *others = super().forward(
+            st_batch, ts, predict="eps", **model_kwargs
+        )  # predict='eps' tells EpsilonPrecond to return raw network output
         x0 = self.get_x0_from_thing(thing, xt, ts)
-        if predict == 'x0':
+        if predict == "x0":
             return x0, *others
-        elif predict == 'eps':
+        elif predict == "eps":
             # eps = self.noise_schedule.predict_eps_from_x0_xt(xt, x0, ts)  # not numberically stable when t is near 0
             eps = self.get_eps_from_thing(thing, xt, ts)
             return eps, *others
@@ -111,7 +126,7 @@ class EDMPrecond(EpsilonPrecond):
         based on EDM loss, but assume sigma_data is 1
         """
         sigma_vp = self.noise_schedule.get_sigma(ts).view(-1, 1)
-        alpha_vp = torch.sqrt(1-sigma_vp**2)
+        alpha_vp = torch.sqrt(1 - sigma_vp**2)
         sigma_ve = sigma_vp / alpha_vp
         c_skip = 1 / torch.sqrt(sigma_ve**2 + 1)
         c_out = sigma_ve / torch.sqrt(sigma_ve**2 + 1)
@@ -119,16 +134,17 @@ class EDMPrecond(EpsilonPrecond):
 
     def get_eps_from_thing(self, thing, xt, ts):
         sigma_vp = self.noise_schedule.get_sigma(ts).view(-1, 1)
-        alpha_vp = torch.sqrt(1-sigma_vp**2)
+        alpha_vp = torch.sqrt(1 - sigma_vp**2)
         sigma_ve = sigma_vp / alpha_vp
         c_skip = 1 / torch.sqrt(sigma_ve**2 + 1)
         c_out = sigma_ve / torch.sqrt(sigma_ve**2 + 1)
-        ve_xt = xt * torch.sqrt(1+sigma_ve**2)
+        ve_xt = xt * torch.sqrt(1 + sigma_ve**2)
         # x0 = c_skip * xt + c_out * thing
         # eps = (ve_xt - x0) / sigma_ve
         ### - rewrite to be more stable -------------------
-        eps_times_sigma = (1-c_skip) * ve_xt - c_out * thing
+        eps_times_sigma = (1 - c_skip) * ve_xt - c_out * thing
         return eps_times_sigma / sigma_ve
+
 
 class NonePrecond(torch.nn.Module):
     def __init__(self, structure, model_type, use_fp16=-1, **model_kwargs):
@@ -139,8 +155,10 @@ class NonePrecond(torch.nn.Module):
     def forward(self, *args, **kwargs):
         return self.model.forward(*args, **kwargs)
 
+
 networks_to_kwargs = {
-    l.__name__: kwargs for l, kwargs in it.chain(
+    l.__name__: kwargs
+    for l, kwargs in it.chain(
         EGNNMultiHeadJump_to_kwargs.items(),
     )
 }
