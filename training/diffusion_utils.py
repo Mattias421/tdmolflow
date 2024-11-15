@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+# TODO implement OT-FLOW ODE
 
 # Class for DDPM continuous time related statistics
 class VP_SDE:
