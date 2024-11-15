@@ -167,3 +167,4 @@ dmypy.json
 
 # null ls
 **/.null-ls*
+**__pycache__/
