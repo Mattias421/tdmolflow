@@ -1,5 +1,6 @@
 wandb
 qm9
+flow_demo/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
