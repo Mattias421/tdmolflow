@@ -1,14 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=tdflow
-#SBATCH --partition=gpu
-#SBATCH --qos=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --mem=82G
-#SBATCH --time=80:00:00
+#SBATCH --partition=dcs-gpu
+#SBATCH --account=dcs-res
+#SBATCH --nodes=1
+#SBATCH --gpus-per-node=1
+#SBATCH --mem=34G
+#SBATCH --time=7-00:00:00
 
-module load Anaconda3/2022.05
+module load Anaconda3/2019.07
 
-source activate td-flow
+source activate tdmolflow
 
 export WANDB_ENTITY=mattias421
 export WANDB_PROJECT=tdmolflow

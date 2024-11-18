@@ -1,0 +1,36 @@
+wandb: Using wandb-core as the SDK backend. Please refer to https://wandb.me/wandb-core for more information.
+using rdkit
+parse_int_list 0,0,0,1,1,1,1,1,1
+parse_int_list 1,1,1,1,1,1,1,1,1
+seed:  1820571149
+wandb: ERROR api_key not configured (no-tty). call wandb.login(key=[your_api_key])
+Traceback (most recent call last):
+  File "/mnt/fastdata/acq22mc/exp/tdmolflow/train.py", line 682, in <module>
+    main()
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/click/core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/click/core.py", line 1078, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/click/core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/click/core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/fastdata/acq22mc/exp/tdmolflow/train.py", line 623, in main
+    wandb.init(
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/sdk/wandb_init.py", line 1266, in init
+    wandb._sentry.reraise(e)
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/analytics/sentry.py", line 155, in reraise
+    raise exc.with_traceback(sys.exc_info()[2])
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/sdk/wandb_init.py", line 1251, in init
+    wi.setup(kwargs)
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/sdk/wandb_init.py", line 303, in setup
+    wandb_login._login(
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/sdk/wandb_login.py", line 347, in _login
+    wlogin.prompt_api_key()
+  File "/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/wandb/sdk/wandb_login.py", line 281, in prompt_api_key
+    raise UsageError("api_key not configured (no-tty). call " + directive)
+wandb.errors.errors.UsageError: api_key not configured (no-tty). call wandb.login(key=[your_api_key])
