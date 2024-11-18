@@ -1,9 +1,86 @@
 import math
 
-import numpy as np
 import torch
-from tqdm import tqdm
 
+# TODO implement OT-FLOW ODE
+
+class CFM_ODE:
+    def __init__(self, max_dim, sigma):
+        super().__init__()
+        self.max_dim = max_dim
+
+        self.beta_min = sigma
+
+    def get_beta_t(self, ts):
+        return torch.full_like(ts, self.beta_min).view(-1, 1).repeat(1, self.max_dim) # TODO check
+
+    def get_sigma(self, times):
+        return self.beta_min
+
+    def get_p0t_stats(self, st_batch, times):
+        # minibatch (batch, dim1, dim2, ..., dimD)
+        # times (batch)
+        minibatch = st_batch.get_flat_lats() # x0
+        times = times.view(
+            minibatch.shape[0], *([1] * (len(minibatch.shape) - 1))
+        )
+
+        x1 = torch.randn_like(minibatch) # p1(x) is gaussian
+        mean = (1 - times) * minibatch + times * x1
+        std = self.get_sigma(times)
+
+        return mean, std, x1
+
+    def predict_x0_from_xt(self, xt, eps, t):
+        # xt (B, D)
+        # eps (B, D)
+        # t (B)
+        log_term = (
+            -0.25 * t**2 * (self.beta_max - self.beta_min)
+            - 0.5 * t * self.beta_min
+        )
+        log_term_unsqueezed = log_term.view(
+            xt.shape[0], *([1] * (len(xt.shape) - 1))
+        )
+        std = torch.sqrt(1 - torch.exp(2.0 * log_term_unsqueezed)).expand(
+            *xt.shape
+        )
+
+        return (xt - std * eps) / torch.exp(log_term_unsqueezed)
+
+    def predict_eps_from_x0_xt(self, xt_st_batch, x0, t):
+        xt = xt_st_batch.get_flat_lats()
+        log_term = (
+            -0.25 * t**2 * (self.beta_max - self.beta_min)
+            - 0.5 * t * self.beta_min
+        )
+        log_term_unsqueezed = log_term.view(
+            xt.shape[0], *([1] * (len(xt.shape) - 1))
+        )
+        std = torch.sqrt(1 - torch.exp(2.0 * log_term_unsqueezed)).expand(
+            *xt.shape
+        )
+
+        return (xt - torch.exp(log_term_unsqueezed) * x0) / std
+
+    def get_pxt2_xt1_stats(self, xt1_st_batch, t1, t2):
+        # p(x_t2 | x_t1) gaussian stats
+
+        minibatch = xt1_st_batch.get_flat_lats()  # (B, N)
+
+        alpha_t1 = torch.exp(
+            -0.5 * t1**2 * (self.beta_max - self.beta_min) - t1 * self.beta_min
+        )
+        alpha_t2 = torch.exp(
+            -0.5 * t2**2 * (self.beta_max - self.beta_min) - t2 * self.beta_min
+        )
+        alpha_t1 = alpha_t1.view(-1, 1)
+        alpha_t2 = alpha_t2.view(-1, 1)
+
+        mean = torch.sqrt(alpha_t2 / alpha_t1) * minibatch
+        std = torch.sqrt(1 - alpha_t2 / alpha_t1).repeat(1, minibatch.shape[1])
+
+        return mean, std
 
 # Class for DDPM continuous time related statistics
 class VP_SDE:

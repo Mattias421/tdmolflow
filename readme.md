@@ -1,3 +1,12 @@
+# Work in progress
+
+- [ ] Implement OT-Flow matching
+- [ ] Implement *trans-dimensional* flow matching
+- [ ] Replace OHE with trainable embeddings
+- [ ] EQ-GAT
+- [ ] Cross-attention
+- [ ] Multimodal conditioning
+
 # Notebooks
 
 Notebooks are provided in the notebooks folder for sampling and visualizing the results for unconditional generation, conditional generation through diffusion guidance and finally for performing interpolations.
@@ -7,7 +16,7 @@ Pre-trained models are provided in the models folder.
 
 # Repository
 
-This repository is built on top the open source repo https://github.com/NVlabs/edm
+This repository is built on top the open source repo https://github.com/NVlabs/edm and https://github.com/andrew-cr/jump-diffusion
 
 # Training
 

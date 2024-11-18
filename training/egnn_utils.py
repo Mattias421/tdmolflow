@@ -13,6 +13,7 @@ from torch.distributions.categorical import Categorical
 # args = get_args()
 # dataset_info = get_dataset_info(args.dataset, args.remove_h)
 
+# TODO add attention network
 
 # def train_epoch(args, loader, epoch, model, model_dp, model_ema, ema, device, dtype, property_norms, optim,
 #                 nodes_dist, gradnorm_queue, dataset_info, prop_dist):

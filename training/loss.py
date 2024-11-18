@@ -9,27 +9,13 @@
 "Elucidating the Design Space of Diffusion-Based Generative Models"."""
 
 import itertools as it
-import math
 
-import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy.stats import poisson
+from torch_utils import persistence 
 
-from torch_utils import persistence, training_stats
-from training.dataset.qm9 import get_cfg, get_dataset_info
-from training.diffusion_utils import VP_SDE, ConstForwardRate, StepForwardRate
-from training.egnn_utils import (
-    DistributionNodes,
-    EnVariationalDiffusion,
-    assert_mean_zero_with_mask,
-    check_mask_correct,
-    compute_loss_and_nll,
-    remove_mean_with_mask,
-    sample_center_gravity_zero_gaussian_with_mask,
-    sample_gaussian_with_mask,
-)
-from training.structure import StructuredArgument, StructuredDataBatch
+from training.diffusion_utils import VP_SDE, ConstForwardRate, StepForwardRate, CFM_ODE
+from training.structure import StructuredDataBatch
 
 
 def get_forward_rate(rate_function_name, max_problem_dim, rate_cut_t):
@@ -48,6 +34,8 @@ def get_noise_schedule(
     if noise_schedule_name == "vp_sde":
         # DDPM schedule is beta_min=0.1, beta_max=20
         return VP_SDE(max_problem_dim, vp_sde_beta_min, vp_sde_beta_max)
+    elif noise_schedule_name == "cfm_ode":
+        return CFM_ODE(max_problem_dim, vp_sde_beta_min)
     else:
         raise ValueError(noise_schedule_name)
 
@@ -82,6 +70,7 @@ class JumpLossFinalDim:
             rate_cut_t,
         )
 
+        self.noise_schedule_name = noise_schedule_name
         self.noise_schedule = get_noise_schedule(
             noise_schedule_name,
             self.structure.graphical_structure.max_problem_dim,
@@ -128,8 +117,11 @@ class JumpLossFinalDim:
 
         x, y = st_batch.get_flat_lats_and_obs()
 
-        mean, std = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
-        noise = torch.randn_like(mean)
+        if self.noise_schedule_name == "vp_sde":
+            mean, std = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
+            noise = torch.randn_like(mean)
+        elif self.noise_schedule_name == "cfm_ode":
+            mean, std, noise = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
         noise_st_batch = StructuredDataBatch.create_copy(st_batch)
         noise_st_batch.set_flat_lats(noise)
         noise_st_batch.delete_dims(new_dims=dims_xt)
@@ -211,14 +203,18 @@ class JumpLossFinalDim:
             rate_delxt = rate_xt
             mean_std = dummy_mean_std
 
-        target = {"eps": noise, "x0": x}[to_predict]
-        score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2)
-        if self.loss_type == "edm":
-            vp_sigma = std
-            vp_alpha = torch.sqrt(1 - vp_sigma**2)
-            ve_sigma = vp_sigma / vp_alpha
-            weights = (ve_sigma**2 + 1) / ve_sigma**2
-            score_loss = score_loss * weights
+        if self.loss_type == "cfm_loss":
+            target = {"eps": noise - x, "x0": x}[to_predict]
+            score_loss = D_xt_mask * (D_xt - target)
+        else:
+            target = {"eps": noise, "x0": x}[to_predict]
+            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2)
+            if self.loss_type == "edm":
+                vp_sigma = std
+                vp_alpha = torch.sqrt(1 - vp_sigma**2)
+                ve_sigma = vp_sigma / vp_alpha
+                weights = (ve_sigma**2 + 1) / ve_sigma**2
+                score_loss = score_loss * weights
 
         f_rate_vs_t = self.forward_rate.get_rate(dims_xt, ts).to(device)  # (B,)
 
@@ -328,7 +324,7 @@ JumpLossFinalDim_to_kwargs = {
             ("nearest_atom_loss_weight", "float", 1.0),
             (
                 "noise_schedule_name",
-                "click.Choice(['vp_sde', 'nonisocosine', 'polynomial'])",
+                "click.Choice(['cfm_ode', 'vp_sde', 'nonisocosine', 'polynomial'])",
                 "vp_sde",
             ),
             ("mean_or_sum_over_dim", "click.Choice(['mean', 'sum'])", "sum"),
@@ -343,3 +339,5 @@ losses_to_kwargs = {
         JumpLossFinalDim_to_kwargs.items(),
     )
 }
+
+

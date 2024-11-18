@@ -17,9 +17,9 @@ with open(os.path.join("todetts", "version.txt"), encoding="utf-8") as f:
     version = f.read().strip()
 
 setup(
-    name="todetts",
+    name="tdmolflow",
     version=version,
-    description="Research repo for implicit layer TTS, based off speechbrain",
+    description="Extending trans-dimensional diffusion to flow-matching",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Mattias Cross",

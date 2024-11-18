@@ -1,5 +1,6 @@
 wandb
 qm9
+flow_demo/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -167,3 +168,4 @@ dmypy.json
 
 # null ls
 **/.null-ls*
+**__pycache__/
