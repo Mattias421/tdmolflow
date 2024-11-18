@@ -38,7 +38,7 @@ dataset_obj = dnnlib.util.construct_class_by_name(**c.dataset_kwargs, train_or_v
 
 structure = Structure(**c.structure_kwargs, dataset=dataset_obj)
 
-batch_size = 1
+batch_size = 3
 seeds = torch.arange(batch_size)
 rnd = StackedRandomGenerator(device, seeds)
 indices = rnd.randint(len(dataset_obj), size=[batch_size, 1], device=device)
@@ -51,12 +51,13 @@ st_batch = StructuredDataBatch(data, dims, structure.observed,
 )
 ref_st_batch = st_batch
 idx = 0
-num_atoms = st_batch.get_dims()[idx].item()
-positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-plt.savefig("./flow_demo/ref.png")
-plt.close()
+for idx in range(batch_size):
+    num_atoms = st_batch.get_dims()[idx].item()
+    positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+    atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+    plt.savefig(f"./flow_demo/ref_{idx}.png")
+    plt.close()
 
 
 max_problem_dim = structure.graphical_structure.max_problem_dim
@@ -118,7 +119,8 @@ def sample_flow(t, noise_schedule_diff, noise_schedule_cfm):
 
     st_batch.gs.adjust_st_batch(st_batch)
 
-    mean, std, noise = noise_schedule_diff.get_p0t_stats(st_batch, ts.to(device))
+    mean, std = noise_schedule_diff.get_p0t_stats(st_batch, ts.to(device))
+    noise = torch.randn_like(mean)
     noise_st_batch = StructuredDataBatch.create_copy(st_batch)
     noise_st_batch.set_flat_lats(noise)
     noise_st_batch.delete_dims(new_dims=dims_xt)
@@ -133,15 +135,18 @@ def sample_flow(t, noise_schedule_diff, noise_schedule_cfm):
 # adjust
     st_batch.gs.adjust_st_batch(st_batch)
 
-    idx = 0
-    num_atoms = st_batch.get_dims()[idx].item()
-    positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-    atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-    plt.savefig(f"./flow_demo/diff_{int(t*10)}.png")
-    plt.close()
+    for idx in range(batch_size):
+        num_atoms = st_batch.get_dims()[idx].item()
+        positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+        atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+        plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+        plt.savefig(f"./flow_demo/diff_{idx}_{int(t*100)}.png")
+        plt.close()
     diff_st_batch = StructuredDataBatch.create_copy(st_batch)
 
+    st_batch = StructuredDataBatch(data, dims, structure.observed,
+    structure.exist, dataset_obj.is_onehot, structure.graphical_structure
+)
     st_batch.delete_dims(new_dims=dims_xt)
 
     st_batch.gs.adjust_st_batch(st_batch)
@@ -161,24 +166,23 @@ def sample_flow(t, noise_schedule_diff, noise_schedule_cfm):
 # adjust
     st_batch.gs.adjust_st_batch(st_batch)
 
-    idx = 0
-    num_atoms = st_batch.get_dims()[idx].item()
-    positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-    atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-    plt.savefig(f"./flow_demo/cfm_{int(t*10)}.png")
-    plt.close()
+    for idx in range(batch_size):
+        num_atoms = st_batch.get_dims()[idx].item()
+        positions = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+        atom_types = torch.argmax(st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+        plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+        plt.savefig(f"./flow_demo/cfm_{idx}_{int(t*100)}.png")
+        plt.close()
     cfm_st_batch = StructuredDataBatch.create_copy(st_batch)
     return diff_st_batch.get_flat_lats(), cfm_st_batch.get_flat_lats()
 
 loss_diff = []
 loss_cfm = []
 ref = ref_st_batch.get_flat_lats()
-for t in range(11):
-    xt = sample_flow(1 - t/10, noise_schedule_cfm)
-    loss_diff.append(torch.norm(ref - xt).item())
-    xt = sample_diffusion(1 - t/10, noise_schedule)
-    loss_cfm.append(torch.norm(ref - xt).item())
+for t in range(101):
+    xt_diff, xt_cfm = sample_flow(1 - t/100, noise_schedule, noise_schedule_cfm)
+    loss_diff.append(torch.norm(ref - xt_diff).item())
+    loss_cfm.append(torch.norm(ref - xt_cfm).item())
 
 plt.plot(loss_diff, label="diff")
 plt.plot(loss_cfm, label="cfm")
