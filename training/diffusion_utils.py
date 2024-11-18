@@ -12,7 +12,7 @@ class CFM_ODE:
         self.beta_min = sigma
 
     def get_beta_t(self, ts):
-        return self.beta_min # TODO check
+        return torch.full_like(ts, self.beta_min).view(-1, 1).repeat(1, self.max_dim) # TODO check
 
     def get_sigma(self, times):
         return self.beta_min
@@ -21,6 +21,9 @@ class CFM_ODE:
         # minibatch (batch, dim1, dim2, ..., dimD)
         # times (batch)
         minibatch = st_batch.get_flat_lats() # x0
+        times = times.view(
+            minibatch.shape[0], *([1] * (len(minibatch.shape) - 1))
+        )
 
         x1 = torch.randn_like(minibatch) # p1(x) is gaussian
         mean = (1 - times) * minibatch + times * x1

@@ -160,12 +160,16 @@ class JumpSampler:
                     predict="eps",
                 )
 
-            mean, std = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
-
-            score = -(1 / torch.clamp(std, min=0.001)) * D_xt
+            if loss.noise_schedule_name == "vp_sde":
+                mean, std = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
+                score = -(1 / torch.clamp(std, min=0.001)) * D_xt
+            elif loss.noise_schedule_name == "cfm_ode":
+                score = D_xt
 
             return score, rate_xt, mean_std
         else:
+            print("WARNING, CFM NOT IMPLEMENTED")
+            raise NotImplementedError
             flat_lats = state_st_batch.get_flat_lats().detach()
             flat_lats.requires_grad = True
             state_st_batch.set_flat_lats(flat_lats)
@@ -327,24 +331,43 @@ class JumpSampler:
             # implement corrector steps for after adding a dimension
             is_finished = (ts < finish_at).float().view(-1, 1)
 
-            # diffusion bit
-            beta_t = loss.noise_schedule.get_beta_t(ts)  # (B, problem_dim)
-            beta_t = state_st_batch.convert_problem_dim_to_tensor_dim(
-                beta_t
-            )  # (B, tensor_dim)
+            if loss.noise_schedule_name == "vp_sde":
+                # diffusion bit
+                beta_t = loss.noise_schedule.get_beta_t(ts)  # (B, problem_dim)
+                beta_t = state_st_batch.convert_problem_dim_to_tensor_dim(
+                    beta_t
+                )  # (B, tensor_dim)
 
-            score, rate_xt, mean_std = self.get_score(
-                state_st_batch, net, loss, ts, dataset_obj, rnd
-            )
-            nfe += 1
+                score, rate_xt, mean_std = self.get_score(
+                    state_st_batch, net, loss, ts, dataset_obj, rnd
+                )
+                nfe += 1
 
-            mask = state_st_batch.get_mask(
-                B=B, include_obs=False, include_onehot_channels=True
-            ).to(device)
+                mask = state_st_batch.get_mask(
+                    B=B, include_obs=False, include_onehot_channels=True
+                ).to(device)
 
-            xt = (
-                2 - torch.sqrt(1 - beta_t * self.dt)
-            ) * xt + mask * beta_t * self.dt * score
+                xt = (
+                    2 - torch.sqrt(1 - beta_t * self.dt)
+                ) * xt + mask * beta_t * self.dt * score
+            elif loss.noise_schedule_name == "cfm_ode":
+                beta_t = loss.noise_schedule.get_beta_t(ts)  # (B, problem_dim)
+                beta_t = state_st_batch.convert_problem_dim_to_tensor_dim(
+                    beta_t
+                )  # (B, tensor_dim)
+
+                score, rate_xt, mean_std = self.get_score(
+                    state_st_batch, net, loss, ts, dataset_obj, rnd
+                )
+                nfe += 1
+
+                mask = state_st_batch.get_mask(
+                    B=B, include_obs=False, include_onehot_channels=True
+                ).to(device)
+
+                xt = xt + mask * self.dt * score
+
+            # TODO this noise is just for corrector? is corrector used/useful?
             noise = rnd.randn_like(xt)
             noise_st_batch = StructuredDataBatch.create_copy(state_st_batch)
             noise_st_batch.set_flat_lats(noise)
@@ -357,6 +380,7 @@ class JumpSampler:
                 and self.no_noise_final_step
                 and will_finish
             ):
+                # TODO not sure what this does
                 xt = xt + mask * torch.sqrt(beta_t * self.dt) * noise
 
             set_unfinished_lats(xt)
@@ -544,3 +568,4 @@ samplers_to_kwargs = {
         JumpSampler_to_kwargs.items(),
     )
 }
+
