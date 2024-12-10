@@ -3221,14 +3221,19 @@ class QM9Dataset(StructuredDatasetBase):
         atom_type_norm,
         charge_norm,
         train_or_valid,
+        remove_h=False,
     ):
         print("------- making QM9 dataset --------")
 
         self.only_second_half = only_second_half
+        self.remove_h = remove_h
 
         cfg = get_cfg()
         if self.only_second_half:
             cfg.dataset = "qm9_second_half"
+        if self.remove_h:
+            cfg.remove_h = True
+
         self.dataset_info = get_dataset_info(cfg.dataset, cfg.remove_h)
 
         self.graphical_structure = QM9GraphicalStructure(
@@ -3584,6 +3589,7 @@ class QM9GraphicalStructure(GraphicalStructureBase):
         x0_pos = st_batch.tuple_batch[0]
         assert x0_pos.shape == (B, n_nodes, 3)
 
+
         atom_mask = torch.arange(n_nodes).view(1, -1) < dims.view(
             -1, 1
         )  # (B, n_nodes)
@@ -3703,6 +3709,7 @@ qm9_datasets_to_kwargs = {
             ("atom_type_norm", "float", 4.0),
             ("charge_norm", "float", 10.0),
             ("train_or_valid", "str", "train"),  # this is ignored
+            ("remove_h", "str2bool", "False"),
         ]
     ),
 }
