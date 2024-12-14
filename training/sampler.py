@@ -419,6 +419,8 @@ class JumpSampler:
             state_st_batch.delete_dims(num_dims)
             state_st_batch.gs.adjust_st_batch(state_st_batch)
             xt = state_st_batch.get_flat_lats().detach()
+            # if increase_mask.sum() > 0:
+            #     breakpoint()
 
             for corrector_idx in range(corrector_steps):
                 set_unfinished_lats(xt)

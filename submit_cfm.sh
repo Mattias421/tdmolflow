@@ -17,6 +17,7 @@ python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --observed 0,0,0,1,1,1,1,1,1 --exist 1,1,1,1,1,1,1,1,1 --snap 25 --dump 25 \
     --precond eps --data_class QM9Dataset --qm9dataset_shuffle_node_ordering True \
     --qm9dataset_condition_on_alpha False --qm9dataset_only_second_half False \
+    --qm9dataset_remove_h True \
     --qm9dataset_atom_type_norm 0.25 --loss_class JumpLossFinalDim \
     --qm9dataset_remove_h True \
     --jumplossfinaldim_rate_function_name step --jumplossfinaldim_rate_cut_t 0.1 \

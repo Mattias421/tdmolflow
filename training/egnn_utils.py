@@ -2092,6 +2092,8 @@ class Jump_EGNN_QM9(nn.Module):
 
         vel = vel.view(bs, n_nodes, -1)
 
+        # print("vel V")
+        # print(vel.square().mean())
         if torch.any(torch.isnan(vel)):
             print(
                 "Warning: detected nan in vel, resetting EGNN output to zero."
