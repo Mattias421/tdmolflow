@@ -1,0 +1,5 @@
+Usage: train.py [OPTIONS]
+Try 'train.py --help' for help.
+
+Error: No such option: --qm9dataset_remove_h (Possible options: --qm9dataset_charge_norm, --qm9dataset_pos_norm, --qm9dataset_subset)
+using rdkit

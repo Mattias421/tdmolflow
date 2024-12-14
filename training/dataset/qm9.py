@@ -3266,7 +3266,7 @@ class QM9Dataset(StructuredDatasetBase):
 
         print("QM9 Dataset Length", self.N)
 
-        self.num_atom_types = 5
+        self.num_atom_types = 5 - int(self.remove_h)
 
         qm9_to_eV = {
             "U0": 27.2114,

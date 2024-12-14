@@ -1,0 +1,6 @@
+ModuleCmd_Load.c(213):ERROR:105: Unable to locate a modulefile for 'Anaconda3/2022.05'
+/var/spool/slurmd/job3681955/slurm_script: line 11: activate: No such file or directory
+  File "train.py", line 98
+    f"{name} parameter appears twice so will override one!!!"
+                                                            ^
+SyntaxError: invalid syntax
