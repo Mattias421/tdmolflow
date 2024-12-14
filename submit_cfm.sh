@@ -3,12 +3,12 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --mem=82G
+#SBATCH --mem=16G
 #SBATCH --time=80:00:00
 
-# module load Anaconda3/2022.05
-#
-# source activate td-flow
+module load Anaconda3/2019.07
+
+source activate tdmolflow
 
 export WANDB_ENTITY=mattias421
 export WANDB_PROJECT=tdmolflow
@@ -18,6 +18,7 @@ python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --precond eps --data_class QM9Dataset --qm9dataset_shuffle_node_ordering True \
     --qm9dataset_condition_on_alpha False --qm9dataset_only_second_half False \
     --qm9dataset_atom_type_norm 0.25 --loss_class JumpLossFinalDim \
+    --qm9dataset_remove_h True \
     --jumplossfinaldim_rate_function_name step --jumplossfinaldim_rate_cut_t 0.1 \
     --jumplossfinaldim_mean_or_sum_over_dim mean --jumplossfinaldim_noise_schedule_name cfm_ode \
     --jumplossfinaldim_vp_sde_beta_min 0.01 \
