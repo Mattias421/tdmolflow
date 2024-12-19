@@ -79,6 +79,7 @@ class EpsilonPrecond(torch.nn.Module):
         xt = (
             st_batch.get_flat_lats()
         )  # TODO mode to relevant if statement below
+        breakpoint()
         eps, *others = self.model(st_batch, ts, **model_kwargs)
         if predict == "eps":
             return eps, *others

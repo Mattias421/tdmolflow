@@ -247,6 +247,7 @@ def training_loop(
                 #     assert False
 
                 dims, *data = next(dataset_iterator)
+                breakpoint()
                 st_batch = StructuredDataBatch(
                     data,
                     dims,

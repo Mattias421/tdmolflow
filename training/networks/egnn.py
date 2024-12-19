@@ -20,8 +20,6 @@ from training.networks.gsdm import (
     get_timestep_embedding,
 )
 
-args = get_cfg()
-dataset_info = get_dataset_info(args.dataset, args.remove_h)
 
 
 class EGNNMultiHeadJump(nn.Module):
@@ -42,22 +40,27 @@ class EGNNMultiHeadJump(nn.Module):
         transformer_dim,
         noise_embed="ts",
         augment_dim=-1,
+        remove_h=False,
     ):
         super().__init__()
         self.structure = structure
         self.detach_last_layer = detach_last_layer
 
+        args = get_cfg()
+        dataset_info = get_dataset_info(args.dataset, remove_h)
         args.context_node_nf = 0
         in_node_nf = len(dataset_info["atom_decoder"]) + int(
             args.include_charges
         )
+        self.in_node_nf = in_node_nf
         # in_node_nf is for atom types and atom charges
         # +1 for time
+        breakpoint()
         dynamics_in_node_nf = in_node_nf + 1
 
         self.egnn_net = Jump_EGNN_QM9(
             in_node_nf=dynamics_in_node_nf,
-            context_node_nf=6,
+            context_node_nf=in_node_nf,
             n_dims=3,
             hidden_nf=args.nf,
             act_fn=torch.nn.SiLU(),
@@ -86,7 +89,7 @@ class EGNNMultiHeadJump(nn.Module):
         self.temb_net = nn.Linear(self.temb_dim, self.temb_dim)
 
         self.transformer_1_proj_in = nn.Linear(
-            self.egnn_net.egnn.hidden_nf + 6, self.transformer_dim
+            self.egnn_net.egnn.hidden_nf + in_node_nf, self.transformer_dim
         )
 
         # these are for the head that does the rate and nearest atom prediction
@@ -117,7 +120,7 @@ class EGNNMultiHeadJump(nn.Module):
 
         # this is for the head that gives the vector given the nearest atom and std
         self.vec_transformer_in_proj = nn.Linear(
-            self.egnn_net.egnn.hidden_nf + 6 + 1 + 2, self.transformer_dim
+            self.egnn_net.egnn.hidden_nf + self.in_node_nf + 1 + 2, self.transformer_dim
         )
         self.vec_attn_blocks = nn.ModuleList(
             [
@@ -141,7 +144,7 @@ class EGNNMultiHeadJump(nn.Module):
         self.pre_auto_proj = nn.Linear(
             self.transformer_dim, self.transformer_dim
         )
-        self.post_auto_proj = nn.Linear(self.transformer_dim, 2 * 5 + 2 + 1)
+        self.post_auto_proj = nn.Linear(self.transformer_dim, 2 * self.in_node_nf + 2 + 1)
 
     def forward(
         self,
@@ -163,7 +166,6 @@ class EGNNMultiHeadJump(nn.Module):
         device = st_batch.get_device()
         B, n_nodes, _ = x.shape
 
-        assert x.shape == (B, n_nodes, 3)
 
         atom_mask = torch.arange(st_batch.gs.max_problem_dim).view(
             1, -1
@@ -175,11 +177,9 @@ class EGNNMultiHeadJump(nn.Module):
         edge_mask = atom_mask.unsqueeze(1) * atom_mask.unsqueeze(
             2
         )  # (B, n_nodes_aug, n_nodes_aug) is 1 when both col and row are 1
-        assert edge_mask.shape == (B, n_nodes, n_nodes)
         diag_mask = ~torch.eye(
             edge_mask.size(1), dtype=torch.bool, device=device
         ).unsqueeze(0)
-        assert diag_mask.shape == (1, n_nodes, n_nodes)
         edge_mask *= diag_mask
         edge_mask = edge_mask.view(B * n_nodes * n_nodes, 1)
 
@@ -187,11 +187,8 @@ class EGNNMultiHeadJump(nn.Module):
         edge_mask = edge_mask.long().to(device)
 
         node_mask = atom_mask.unsqueeze(2)
-        assert node_mask.shape == (B, n_nodes, 1)
         atom_type_one_hot = st_batch.tuple_batch[1]
-        assert atom_type_one_hot.shape == (B, n_nodes, 5)
         charges = st_batch.tuple_batch[2]
-        assert charges.shape == (B, n_nodes)
         charges = charges.view(B, n_nodes, 1)
 
         context_parts = torch.cat(
@@ -203,20 +200,18 @@ class EGNNMultiHeadJump(nn.Module):
             ],
             dim=1,
         )
-        assert context_parts.shape == (B, 6)
-        context_parts = context_parts.view(B, 1, 6).repeat(
+        breakpoint()
+        context_parts = context_parts.view(B, 1, self.in_node_nf).repeat(
             1, n_nodes, 1
-        )  # (B, n_nodes, 6)
+        )  # (B, n_nodes, node_nf)
         context_parts = context_parts * node_mask
 
-        assert_mean_zero_with_mask(x, node_mask)
         check_mask_correct(
             [x, atom_type_one_hot, charges, context_parts], node_mask
         )
 
         # note the time gets added on by Jump_EGNN_QM9
         xh = torch.cat([x, atom_type_one_hot, charges], dim=2)
-        assert xh.shape == (B, n_nodes, 3 + 5 + 1)
 
         net_out, net_last_layer = self.egnn_net(
             t=ts,
@@ -226,10 +221,9 @@ class EGNNMultiHeadJump(nn.Module):
             context=context_parts,
         )
 
-        assert net_out.shape == (B, n_nodes, 3 + 5 + 1)
         x_out = net_out[:, :, 0:3]
-        atom_type_one_hot_out = net_out[:, :, 3:8]
-        charges_out = net_out[:, :, 8:9]
+        atom_type_one_hot_out = net_out[:, :, 3:3+self.in_node_nf]
+        charges_out = net_out[:, :, 3+self.in_node_nf:9]
 
         D_xt = torch.cat(
             [
@@ -238,13 +232,6 @@ class EGNNMultiHeadJump(nn.Module):
                 charges_out.flatten(start_dim=1),
             ],
             dim=1,
-        )
-        assert D_xt.shape == (B, n_nodes * (3 + 5 + 1))
-
-        assert net_last_layer.shape == (
-            B,
-            n_nodes,
-            self.egnn_net.egnn.hidden_nf,
         )
 
         if self.detach_last_layer:
@@ -258,18 +245,14 @@ class EGNNMultiHeadJump(nn.Module):
             [net_last_layer, atom_type_one_hot, charges.view(B, n_nodes, 1)],
             dim=2,
         )
-        assert h.shape == (B, n_nodes, self.egnn_net.egnn.hidden_nf + 6)
         h = self.transformer_1_proj_in(h)
-        assert h.shape == (B, n_nodes, self.transformer_dim)
         h = h.transpose(1, 2)
-        assert h.shape == (B, self.transformer_dim, n_nodes)
 
         for res_block, attn_block in zip(self.res_blocks, self.attn_blocks):
             h = res_block(h, temb)
             h = attn_block(h)
 
         h = h.transpose(1, 2)
-        assert h.shape == (B, n_nodes, self.transformer_dim)
 
         rate_emb = self.pre_rate_proj(h)  # (B, N, C)
         rate_emb = torch.mean(rate_emb, dim=1)  # (B, C)
@@ -296,7 +279,6 @@ class EGNNMultiHeadJump(nn.Module):
             rate_out = F.softplus(rate_emb) * f_rate_ts  # (B, 1)
 
         near_atom_logits = self.near_atom_proj(h)[:, :, 0]
-        assert near_atom_logits.shape == (B, n_nodes)
 
         if sample_nearest_atom:
             if rnd is None:
@@ -308,7 +290,6 @@ class EGNNMultiHeadJump(nn.Module):
                     torch.softmax(near_atom_logits, dim=1), num_samples=1
                 ).view(-1)
 
-        assert nearest_atom.shape == (B,)  # index from 0 to n_nodes-1
 
         # create a distance matrix for the closest atom (B, n_nodes)
         distances = torch.sum(
@@ -320,7 +301,6 @@ class EGNNMultiHeadJump(nn.Module):
             dim=-1,
             keepdim=True,
         ).sqrt()
-        assert distances.shape == (B, n_nodes, 1)
 
         nearest_atom_one_hot = (
             torch.tensor([0.0, 1.0], device=device)
@@ -333,7 +313,6 @@ class EGNNMultiHeadJump(nn.Module):
         nearest_atom_one_hot[
             torch.arange(B, device=device), nearest_atom, 1
         ] = 0.0
-        assert nearest_atom_one_hot.shape == (B, n_nodes, 2)
 
         vec_transformer_in = torch.cat(
             [
@@ -345,16 +324,9 @@ class EGNNMultiHeadJump(nn.Module):
             ],
             dim=2,
         )
-        assert vec_transformer_in.shape == (
-            B,
-            n_nodes,
-            self.egnn_net.egnn.hidden_nf + 6 + 1 + 2,
-        )
         vec_transformer_in = vec_transformer_in * node_mask
         vec_transformer_in = self.vec_transformer_in_proj(vec_transformer_in)
-        assert vec_transformer_in.shape == (B, n_nodes, self.transformer_dim)
         vec_transformer_in = vec_transformer_in.transpose(1, 2)
-        assert vec_transformer_in.shape == (B, self.transformer_dim, n_nodes)
         h_vec = vec_transformer_in
 
         for res_block, attn_block in zip(
@@ -363,18 +335,13 @@ class EGNNMultiHeadJump(nn.Module):
             h_vec = res_block(h_vec, temb)
             h_vec = attn_block(h_vec)
 
-        assert h_vec.shape == (B, self.transformer_dim, n_nodes)
         h_vec = h_vec.transpose(1, 2)
-        assert h_vec.shape == (B, n_nodes, self.transformer_dim)
 
         vec_weights = self.vec_weighting_proj(h_vec)  # (B, N, 1)
-        assert vec_weights.shape == (B, n_nodes, 1)
         vectors = (
             x[torch.arange(B, device=device), nearest_atom, :].view(B, 1, 3) - x
         )
-        assert vectors.shape == (B, n_nodes, 3)
         vectors = vectors * node_mask
-        assert vectors.shape == (B, n_nodes, 3)
         # normalize the vectors
         vectors = vectors / (
             torch.sqrt(torch.sum(vectors**2, dim=-1, keepdim=True)) + 1e-3
@@ -387,32 +354,31 @@ class EGNNMultiHeadJump(nn.Module):
         )  # (B, 3)
 
         pre_auto_h = self.pre_auto_proj(h_vec)
-        assert pre_auto_h.shape == (B, n_nodes, self.transformer_dim)
         pre_auto_h = torch.mean(pre_auto_h, dim=1)  # (B, C)
         post_auto_h = self.post_auto_proj(pre_auto_h)  # (B, 2*5 + 2 + 1)
 
         pos_std = post_auto_h[:, 0:1].repeat(1, 3)  # (B, 3)
-        atom_type_mean = post_auto_h[:, 1 : 1 + 5]  # (B, 5)
-        atom_type_std = post_auto_h[:, 1 + 5 : 1 + 5 + 5]  # (B, 5)
-        charge_mean = post_auto_h[:, 1 + 5 + 5 : 1 + 5 + 5 + 1]  # (B, 1)
-        charge_std = post_auto_h[:, 1 + 5 + 5 + 1 : 1 + 5 + 5 + 1 + 1]  # (B, 1)
+        atom_type_mean = post_auto_h[:, 1 : 1 + self.in_node_nf]  # (B, self.in_node_nf)
+        atom_type_std = post_auto_h[:, 1 + self.in_node_nf : 1 + self.in_node_nf + self.in_node_nf]  # (B, self.in_node_nf)
+        charge_mean = post_auto_h[:, 1 + self.in_node_nf + self.in_node_nf : 1 + self.in_node_nf + self.in_node_nf + 1]  # (B, 1)
+        charge_std = post_auto_h[:, 1 + self.in_node_nf + self.in_node_nf + 1 : 1 + self.in_node_nf + self.in_node_nf + 1 + 1]  # (B, 1)
 
         auto_mean_out = (
             torch.cat([auto_pos_mean_out, atom_type_mean, charge_mean], dim=1)
-            .view(B, 1, 3 + 5 + 1)
+            .view(B, 1, 3 + self.in_node_nf + 1)
             .repeat(1, n_nodes, 1)
-        )  # (B, n_nodes, 3+5+1)
+        )  # (B, n_nodes, 3+self.in_node_nf+1)
         auto_std_out = (
             torch.cat([pos_std, atom_type_std, charge_std], dim=1)
-            .view(B, 1, 3 + 5 + 1)
+            .view(B, 1, 3 + self.in_node_nf + 1)
             .repeat(1, n_nodes, 1)
-        )  # (B, n_nodes, 3+5+1)
+        )  # (B, n_nodes, 3+self.in_node_nf+1)
 
         auto_mean_out = torch.cat(
             [
                 auto_mean_out[:, :, 0:3].flatten(start_dim=1),
-                auto_mean_out[:, :, 3:8].flatten(start_dim=1),
-                auto_mean_out[:, :, 8:9].flatten(start_dim=1),
+                auto_mean_out[:, :, 3:3 + self.in_node_nf].flatten(start_dim=1),
+                auto_mean_out[:, :, 3+self.in_node_nf:9].flatten(start_dim=1),
             ],
             dim=1,
         )  # (B, n_nodes * (3+5+1))
@@ -420,8 +386,8 @@ class EGNNMultiHeadJump(nn.Module):
         auto_std_out = torch.cat(
             [
                 auto_std_out[:, :, 0:3].flatten(start_dim=1),
-                auto_std_out[:, :, 3:8].flatten(start_dim=1),
-                auto_std_out[:, :, 8:9].flatten(start_dim=1),
+                auto_std_out[:, :, 3:3 + self.in_node_nf].flatten(start_dim=1),
+                auto_std_out[:, :, 3+self.in_node_nf:9].flatten(start_dim=1),
             ],
             dim=1,
         )  # (B, n_nodes * (3+5+1))
@@ -450,6 +416,7 @@ EGNNMultiHeadJump_to_kwargs = {
             ("n_attn_blocks", "int", 8),
             ("n_heads", "int", 8),
             ("transformer_dim", "int", 128),
+            ("remove_h", "str2bool", "False"),
         ]
     )
 }

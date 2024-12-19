@@ -2049,6 +2049,7 @@ class Jump_EGNN_QM9(nn.Module):
         assert t.shape == (bs,)
         assert self.mode == "egnn_dynamics"
 
+
         edges = self.get_adj_matrix(n_nodes, bs, device)
         edges = [x.to(device) for x in edges]
         # for a flattened vector where the batch and nodes are put in the same
@@ -2066,6 +2067,7 @@ class Jump_EGNN_QM9(nn.Module):
         h_time = h_time.view(bs * n_nodes, 1)
         h = torch.cat([h, h_time], dim=1)
 
+        breakpoint()
         if context is not None:
             # We're conditioning, awesome!
             context = context.view(bs * n_nodes, self.context_node_nf)

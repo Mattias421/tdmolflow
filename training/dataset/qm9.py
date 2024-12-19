@@ -3237,7 +3237,8 @@ class QM9Dataset(StructuredDatasetBase):
         self.dataset_info = get_dataset_info(cfg.dataset, cfg.remove_h)
 
         self.graphical_structure = QM9GraphicalStructure(
-            max_dim=self.dataset_info["max_n_nodes"]
+            max_dim=self.dataset_info["max_n_nodes"],
+            cfg=cfg,
         )
 
         self.shuffle_node_ordering = shuffle_node_ordering
@@ -3495,9 +3496,10 @@ class QM9Dataset(StructuredDatasetBase):
 
 
 class QM9GraphicalStructure(GraphicalStructureBase):
-    def __init__(self, max_dim):
+    def __init__(self, max_dim, cfg):
         self.max_problem_dim = max_dim
-        cfg = get_cfg()
+        # cfg = get_cfg()
+        self.num_atoms = 4 if cfg.remove_h else 5
         self.dataset_info = get_dataset_info(cfg.dataset, cfg.remove_h)
         histogram = self.dataset_info["n_nodes"]
         self.nodes_dist = DistributionNodes(histogram)
@@ -3520,7 +3522,7 @@ class QM9GraphicalStructure(GraphicalStructureBase):
         k = self.max_problem_dim
         return [
             torch.Size([k, 3]),
-            torch.Size([k, 5]),
+            torch.Size([k, self.num_atoms]),
             torch.Size([k]),
             torch.Size([1]),
             torch.Size([1]),

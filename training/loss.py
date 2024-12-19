@@ -139,6 +139,7 @@ class JumpLossFinalDim:
         # first network pass
         to_predict = {"eps": "eps", "x0": "x0", "edm": "x0"}[self.loss_type]
         if self.nearest_atom_pred:
+            breakpoint()
             D_xt, rate_xt, dummy_mean_std, x0_dim_logits, _ = net(
                 st_batch,
                 ts=ts.to(device),
