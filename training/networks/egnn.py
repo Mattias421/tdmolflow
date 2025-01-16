@@ -57,10 +57,11 @@ class EGNNMultiHeadJump(nn.Module):
         # +1 for time
         breakpoint()
         dynamics_in_node_nf = in_node_nf + 1
+        self.dynamics_in_node_nf = dynamics_in_node_nf
 
         self.egnn_net = Jump_EGNN_QM9(
             in_node_nf=dynamics_in_node_nf,
-            context_node_nf=in_node_nf,
+            context_node_nf=dynamics_in_node_nf,
             n_dims=3,
             hidden_nf=args.nf,
             act_fn=torch.nn.SiLU(),
@@ -201,7 +202,7 @@ class EGNNMultiHeadJump(nn.Module):
             dim=1,
         )
         breakpoint()
-        context_parts = context_parts.view(B, 1, self.in_node_nf).repeat(
+        context_parts = context_parts.view(B, 1, self.dynamics_in_node_nf).repeat(
             1, n_nodes, 1
         )  # (B, n_nodes, node_nf)
         context_parts = context_parts * node_mask
@@ -396,6 +397,7 @@ class EGNNMultiHeadJump(nn.Module):
             B, include_onehot_channels=True, include_obs=False
         )  # (B, n_nodes * (3+5+1))
 
+         
         auto_mean_out = auto_mask * auto_mean_out
         auto_std_out = auto_mask * auto_std_out
 
