@@ -66,7 +66,7 @@ vp_sde_beta_max = c["loss_kwargs"]["vp_sde_beta_max"]
 
 
 noise_schedule = VP_SDE(max_problem_dim, vp_sde_beta_min, vp_sde_beta_max)
-noise_schedule_cfm = CFM_ODE(max_problem_dim, sigma=0.01)
+noise_schedule_cfm = CFM_ODE(max_problem_dim, sigma=0.1)
 forward_rate = StepForwardRate(max_problem_dim, rate_cut_t=0.1)
 
 def sample_diffusion(t, noise_schedule):
@@ -180,6 +180,7 @@ loss_diff = []
 loss_cfm = []
 ref = ref_st_batch.get_flat_lats()
 for t in range(101):
+    print(t)
     xt_diff, xt_cfm = sample_flow(1 - t/100, noise_schedule, noise_schedule_cfm)
     loss_diff.append(torch.norm(ref - xt_diff).item())
     loss_cfm.append(torch.norm(ref - xt_cfm).item())
