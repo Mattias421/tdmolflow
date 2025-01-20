@@ -1,0 +1,107 @@
+wandb: Using wandb-core as the SDK backend. Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: mattias421. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.18.3
+wandb: Run data is saved locally in ./results/vanilla/wandb/run-20250120_164519-072qxpl4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run cfm_sigma10
+wandb: ⭐️ View project at https://wandb.ai/mattias421/tdmolflow
+wandb: 🚀 View run at https://wandb.ai/mattias421/tdmolflow/runs/072qxpl4
+using rdkit
+parse_int_list 0,0,0,1,1,1,1,1,1
+parse_int_list 1,1,1,1,1,1,1,1,1
+seed:  441645937
+Creating output directory...
+Loading dataset...
+training.dataset.QM9Dataset () {'condition_on_alpha': False, 'shuffle_node_ordering': True, 'only_second_half': False, 'random_rotation': False, 'remove_h': False, 'subset': -1, 'pos_norm': 1.0, 'charge_norm': 10.0, 'train_or_valid': 'train', 'atom_type_norm': 0.25}
+------- making QM9 dataset --------
+Entropy of n_nodes: H[N] -2.475700616836548
+QM9 Dataset Length 100000
+/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/torch/utils/data/sampler.py:65: UserWarning: `data_source` argument is not used and will be removed in 2.2.0.You may still have custom implementation that utilizes it.
+  warnings.warn("`data_source` argument is not used and will be removed in 2.2.0."
+/fastdata/acq22mc/anaconda/.envs/tdmolflow/lib/python3.11/site-packages/torch/utils/data/dataloader.py:557: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+training.dataset.QM9Dataset () {'condition_on_alpha': False, 'shuffle_node_ordering': True, 'only_second_half': False, 'random_rotation': False, 'remove_h': False, 'subset': -1, 'pos_norm': 1.0, 'charge_norm': 10.0, 'train_or_valid': 'valid', 'atom_type_norm': 0.25}
+------- making QM9 dataset --------
+Entropy of n_nodes: H[N] -2.475700616836548
+QM9 Dataset Length 100000
+Created structure with observedness [0 0 0 1 1 1 1 1 1]
+Constructing network...
+training.networks.EpsilonPrecond () {'model_type': 'EGNNMultiHeadJump', 'n_heads': 8, 'rate_use_x0_pred': True, 'transformer_dim': 128, 'n_attn_blocks': 8, 'detach_last_layer': True, 'noise_embed': 'ts*1000', 'use_fp16': False, 'augment_dim': 9, 'structure': <training.structure.Structure object at 0x2b3d3feda5d0>}
+num parameters:  7327554
+training.sampler.JumpSampler () {'corrector_steps': 0, 'corrector_snr': 0.1, 'corrector_finish_time': 0.003, 'dt_schedule_l': 0.001, 'sample_near_atom': True, 'dt_schedule': 'uniform', 'dt_schedule_h': 0.05, 'do_conditioning': False, 'no_noise_final_step': False, 'condition_sweep_path': None, 'condition_sweep_idx': 0, 'guidance_weight': 1.0, 'dt': 0.001, 'corrector_start_time': 0.1, 'do_jump_corrector': False, 'dt_schedule_tc': 0.5, 'condition_type': 'sweep', 'structure': <training.structure.Structure object at 0x2b3d3feda5d0>}
+training.grad_conditioning.MoleculeJump () {'lr_rampup_kimg': 320, 'grad_norm_clip': 1.0}
+Setting up optimizer...
+training.loss.JumpLossFinalDim () {'rate_cut_t': 0.1, 'rate_function_name': 'step', 'nearest_atom_loss_weight': 1.0, 'x0_logit_ce_loss_weight': 1.0, 'score_loss_weight': 1.0, 'loss_type': 'eps', 'noise_schedule_name': 'cfm_ode', 'nearest_atom_pred': True, 'vp_sde_beta_min': 0.1, 'mean_or_sum_over_dim': 'mean', 'auto_loss_weight': 1.0, 'vp_sde_beta_max': 20.0, 'min_t': 0.001, 'rate_loss_weight': 1.0, 'structure': <training.structure.Structure object at 0x2b3d3feda5d0>}
+torch.optim.Adam () {'params': <generator object Module.parameters at 0x2b3d62d1f060>, 'lr': 3e-05, 'betas': [0.9, 0.999], 'eps': 1e-08}
+Training for 200000 kimg...
+
+tick 0     kimg 0.1       time 34s          sec/tick 8.5     sec/kimg 133.19  iters/sec 0.11731074238752795 maintenance 25.9   cpumem 1.71   gpumem 11.88  reserved 12.35 
+---------- jump sampler -------------
+-------- finish sampling ---------
+nfe:  1000
+[16:48:17] Explicit valence for atom # 0 H, 4, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 13, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 10, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 3, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 18, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 9, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 F, 2, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 14, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 14, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 H, 5, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 6, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 5, is greater than permitted
+[16:48:17] Explicit valence for atom # 2 O, 16, is greater than permitted
+[16:48:17] Explicit valence for atom # 1 O, 3, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 H, 4, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 H, 4, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 F, 8, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 19, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 F, 9, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 5, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 N, 16, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 11, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 N, 17, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 15, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 8, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 N, 20, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 N, 19, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 8, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 13, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 8, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 17, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 N, 4, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 16, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 26, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 9, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 C, 7, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 O, 17, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 F, 6, is greater than permitted
+[16:48:17] Explicit valence for atom # 2 O, 10, is greater than permitted
+[16:48:17] Explicit valence for atom # 0 H, 3, is greater than permitted
+[16:48:18] Explicit valence for atom # 1 O, 4, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 N, 4, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 H, 5, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 H, 5, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 2, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 H, 3, is greater than permitted
+[16:48:18] Explicit valence for atom # 5 O, 3, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 H, 2, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 N, 15, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 5, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 O, 6, is greater than permitted
+[16:48:18] Explicit valence for atom # 4 C, 5, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 2, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 8, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 C, 26, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 7, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 F, 7, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 N, 7, is greater than permitted
+[16:48:18] Explicit valence for atom # 1 O, 10, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 O, 19, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 O, 25, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 N, 22, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 O, 15, is greater than permitted
+[16:48:18] Explicit valence for atom # 0 O, 21, is greater than permitted
+Validity over 64 molecules: 0.00%
+tick 1     kimg 50.1      time 8m 06s       sec/tick 309.7   sec/kimg 6.19    iters/sec 2.52530531802568 maintenance 142.3  cpumem 1.81   gpumem 11.94  reserved 12.21 

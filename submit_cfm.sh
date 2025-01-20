@@ -12,17 +12,16 @@ source activate tdmolflow
 
 export WANDB_ENTITY=mattias421
 export WANDB_PROJECT=tdmolflow
+export WANDB_NAME=cfm_sigma10
 
 python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --observed 0,0,0,1,1,1,1,1,1 --exist 1,1,1,1,1,1,1,1,1 --snap 25 --dump 25 \
     --precond eps --data_class QM9Dataset --qm9dataset_shuffle_node_ordering True \
     --qm9dataset_condition_on_alpha False --qm9dataset_only_second_half False \
-    --qm9dataset_remove_h True \
     --qm9dataset_atom_type_norm 0.25 --loss_class JumpLossFinalDim \
-    --qm9dataset_remove_h True \
     --jumplossfinaldim_rate_function_name step --jumplossfinaldim_rate_cut_t 0.1 \
     --jumplossfinaldim_mean_or_sum_over_dim mean --jumplossfinaldim_noise_schedule_name cfm_ode \
-    --jumplossfinaldim_vp_sde_beta_min 0.01 \
+    --jumplossfinaldim_vp_sde_beta_min 0.1 \
     --jumplossfinaldim_x0_logit_ce_loss_weight 1.0 --jumplossfinaldim_nearest_atom_pred True \
     --sampler_class JumpSampler --jumpsampler_sample_near_atom True --network_class EGNNMultiHeadJump \
     --egnnmultiheadjump_detach_last_layer True --egnnmultiheadjump_rate_use_x0_pred True \
