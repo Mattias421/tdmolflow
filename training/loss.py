@@ -121,7 +121,9 @@ class JumpLossFinalDim:
             mean, std = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
             noise = torch.randn_like(mean)
         elif self.noise_schedule_name == "cfm_ode":
-            mean, std, noise = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
+            mean, std, noise_xT = self.noise_schedule.get_p0t_stats(st_batch, ts.to(device))
+            noise = torch.randn_like(mean)
+
         noise_st_batch = StructuredDataBatch.create_copy(st_batch)
         noise_st_batch.set_flat_lats(noise)
         noise_st_batch.delete_dims(new_dims=dims_xt)
@@ -204,11 +206,11 @@ class JumpLossFinalDim:
             mean_std = dummy_mean_std
 
         if self.loss_type == "cfm_loss":
-            target = {"eps": noise - x, "x0": x}[to_predict]
-            score_loss = D_xt_mask * (D_xt - target)
+            target = {"eps": noise_xT - x, "x0": x}[to_predict]
+            score_loss = D_xt_mask * (D_xt - target) # TODO maybe square and div by 2?
         else:
             target = {"eps": noise, "x0": x}[to_predict]
-            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2)
+            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) 
             if self.loss_type == "edm":
                 vp_sigma = std
                 vp_alpha = torch.sqrt(1 - vp_sigma**2)
