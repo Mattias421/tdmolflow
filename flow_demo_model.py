@@ -100,6 +100,8 @@ B = x0.shape[0]
 
 xT = rnd.randn_like(x0)  # (initialize at N(0, I))
 
+flow_target = xT - x0
+
 state_st_batch.set_flat_lats(xT)
 
 # start at dimension 1
@@ -118,6 +120,10 @@ finish_at = dt / 2
 
 nfe = 0
 will_finish = False
+
+pos_error_list = []
+ohe_error_list = []
+num_dims_list = []
 
 while True:
 
@@ -153,6 +159,7 @@ while True:
             rnd=rnd,
         )
         score = D_xt
+        # score = flow_target  # test with ideal flow
         nfe += 1
 
         mask = state_st_batch.get_mask(
@@ -169,6 +176,7 @@ while True:
     noise_st_batch.gs.adjust_st_batch(noise_st_batch)
     noise = noise_st_batch.get_flat_lats()
 
+    xt = xt + mask * torch.sqrt(beta_t * dt) * noise
 
     set_unfinished_lats(xt)
     state_st_batch.gs.adjust_st_batch(state_st_batch)
@@ -201,6 +209,9 @@ while True:
         num_dims[increase_mask.to(num_dims.device)] + 1
     )
 
+    num_dims_list.append(num_dims[0].item())
+    print(num_dims[0].item())
+
     state_st_batch.set_dims(num_dims)
     set_unfinished_lats(xt.detach())
     state_st_batch.delete_dims(num_dims)
@@ -227,10 +238,7 @@ while True:
     )
     noise_schedule = CFM_ODE(max_problem_dim, sigma=0.01)
     forward_rate = StepForwardRate(max_problem_dim, rate_cut_t=0.1)
-    dims_xt = forward_rate.get_dims_at_t(
-        start_dims=st_batch.get_dims(), ts=ts.cpu()
-    ).int()  # (B,)
-    st_batch.delete_dims(new_dims=dims_xt)
+    st_batch.delete_dims(new_dims=num_dims)
 
     st_batch.gs.adjust_st_batch(st_batch)
 
@@ -238,7 +246,7 @@ while True:
     noise = torch.randn_like(mean)
     noise_st_batch = StructuredDataBatch.create_copy(st_batch)
     noise_st_batch.set_flat_lats(noise)
-    noise_st_batch.delete_dims(new_dims=dims_xt)
+    noise_st_batch.delete_dims(new_dims=num_dims)
     noise_st_batch.gs.adjust_st_batch(noise_st_batch)
     noise = noise_st_batch.get_flat_lats()
     xt = mean + std * noise
@@ -246,31 +254,45 @@ while True:
     st_batch.set_flat_lats(xt)
 
 # make sure all masks are still correct
-    st_batch.delete_dims(new_dims=dims_xt)
+    st_batch.delete_dims(new_dims=num_dims)
 # adjust
     st_batch.gs.adjust_st_batch(st_batch)
-    print("error VVV")
-    print((st_batch.get_flat_lats() - state_st_batch.get_flat_lats()).square().mean())
-    print(ts)
-    print(ts[0] % 0.1)
+    error = (st_batch.get_flat_lats() - state_st_batch.get_flat_lats()).square().mean()
+    print(f"error {error}")
+    print(f"ts {ts[0]}")
+    print(f"jump percent {ts[0] % 0.1}")
     idx = 0
     num_atoms = state_st_batch.get_dims()[idx].item()
-    positions = state_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-    positions_label = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-    print(f"pos error {(positions - positions_label).square().mean()}")
-    if ts[0] % 0.1 < 1e-5:
-        idx = 0
-        num_atoms = state_st_batch.get_dims()[idx].item()
-        positions = state_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-        positions_label = st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-        print(f"pos error {(positions - positions_label).square().mean()}")
-        atom_types = torch.argmax(state_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-        plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-        plt.show()
+    positions = state_st_batch.tuple_batch[0][idx, :num_atoms, :].cpu().detach()
+    positions_label = st_batch.tuple_batch[0][idx, :num_atoms, :].cpu().detach()
+    pos_error = (positions - positions_label).square().mean()
+    print(f"pos error {pos_error}")
+    ohe = state_st_batch.tuple_batch[1][idx, :num_atoms, :].cpu().detach()
+    ohe_label = st_batch.tuple_batch[1][idx, :num_atoms, :].cpu().detach()
+    ohe_error = (ohe - ohe_label).square().mean()
+    print(f"ohe error {ohe_error}")
 
-    state_st_batch = st_batch # teacher forcing
+    pos_error_list.append(pos_error)
+    ohe_error_list.append(ohe_error)
 
-breakpoint()
+    # state_st_batch = st_batch # teacher forcing
+
+plt.plot(pos_error_list)
+plt.title("teacher-forced performance")
+plt.ylabel("pos mse")
+plt.xlabel("ODE step")
+plt.show()
+plt.plot(ohe_error_list)
+plt.title("teacher-forced performance")
+plt.ylabel("ohe mse")
+plt.xlabel("ODE step")
+plt.show()
+plt.plot(num_dims_list)
+plt.title("teacher-forced performance")
+plt.ylabel("num_dims")
+plt.xlabel("ODE step")
+plt.show()
+
 x0_st_batch = sampler.sample(net, st_batch, loss, rnd, known_dims=known_dims,
                                 dataset_obj=dataset_obj)
 

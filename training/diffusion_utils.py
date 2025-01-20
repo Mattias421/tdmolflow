@@ -2,8 +2,6 @@ import math
 
 import torch
 
-# TODO implement OT-FLOW ODE
-
 class CFM_ODE:
     def __init__(self, max_dim, sigma):
         super().__init__()
