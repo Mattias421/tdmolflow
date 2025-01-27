@@ -164,7 +164,8 @@ class JumpSampler:
                 mean, std = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
                 score = -(1 / torch.clamp(std, min=0.001)) * D_xt
             elif loss.noise_schedule_name == "cfm_ode":
-                score = D_xt
+                mean, std, _ = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
+                score = -(1 / torch.clamp(std, min=0.001)) * D_xt
 
             return score, rate_xt, mean_std
         else:
@@ -367,7 +368,6 @@ class JumpSampler:
 
                 xt = xt + mask * self.dt * score
 
-            # TODO this noise is just for corrector? is corrector used/useful?
             noise = rnd.randn_like(xt)
             noise_st_batch = StructuredDataBatch.create_copy(state_st_batch)
             noise_st_batch.set_flat_lats(noise)

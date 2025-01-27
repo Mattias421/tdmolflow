@@ -125,7 +125,8 @@ pos_error_list = []
 ohe_error_list = []
 num_dims_list = []
 
-while True:
+debug_sampler = False
+while debug_sampler:
 
     if (ts - dt).clamp(
         min=finish_at / 2
@@ -277,24 +278,26 @@ while True:
 
     # state_st_batch = st_batch # teacher forcing
 
-plt.plot(pos_error_list)
-plt.title("teacher-forced performance")
-plt.ylabel("pos mse")
-plt.xlabel("ODE step")
-plt.show()
-plt.plot(ohe_error_list)
-plt.title("teacher-forced performance")
-plt.ylabel("ohe mse")
-plt.xlabel("ODE step")
-plt.show()
-plt.plot(num_dims_list)
-plt.title("teacher-forced performance")
-plt.ylabel("num_dims")
-plt.xlabel("ODE step")
-plt.show()
-
-x0_st_batch = sampler.sample(net, st_batch, loss, rnd, known_dims=known_dims,
+# plt.plot(pos_error_list)
+# plt.title("teacher-forced performance")
+# plt.ylabel("pos mse")
+# plt.xlabel("ODE step")
+# plt.show()
+# plt.plot(ohe_error_list)
+# plt.title("teacher-forced performance")
+# plt.ylabel("ohe mse")
+# plt.xlabel("ODE step")
+# plt.show()
+# plt.plot(num_dims_list)
+# plt.title("teacher-forced performance")
+# plt.ylabel("num_dims")
+# plt.xlabel("ODE step")
+# plt.show()
+#
+x0_st_batch = sampler.sample(net, in_st_batch, loss, rnd, known_dims=known_dims,
                                 dataset_obj=dataset_obj)
+
+print(dataset_obj.log_batch(in_st_batch, x0_st_batch, wandb_log=False))
 
 num_to_plot = min(batch_size, 8)
 for idx in range(num_to_plot):
