@@ -297,12 +297,13 @@ while debug_sampler:
 x0_st_batch = sampler.sample(net, in_st_batch, loss, rnd, known_dims=known_dims,
                                 dataset_obj=dataset_obj)
 
+breakpoint()
 print(dataset_obj.log_batch(in_st_batch, x0_st_batch, wandb_log=False))
 
-num_to_plot = min(batch_size, 8)
-for idx in range(num_to_plot):
-    num_atoms = x0_st_batch.get_dims()[idx].item()
-    positions = x0_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-    atom_types = torch.argmax(x0_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-    plt.show()
+# num_to_plot = min(batch_size, 8)
+# for idx in range(num_to_plot):
+#     num_atoms = x0_st_batch.get_dims()[idx].item()
+#     positions = x0_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+#     atom_types = torch.argmax(x0_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+#     plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+#     plt.show()

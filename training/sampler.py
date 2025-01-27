@@ -366,7 +366,14 @@ class JumpSampler:
                     B=B, include_obs=False, include_onehot_channels=True
                 ).to(device)
 
-                xt = xt + mask * self.dt * score
+                if score.mean().abs() < 1:
+                    xt = xt + mask * self.dt * score
+                else:
+                    print("score too big!")
+                # xt = (
+                #     2 - torch.sqrt(1 - beta_t * self.dt)
+                # ) * xt + mask * beta_t * self.dt * score
+                print(xt.mean())
 
             noise = rnd.randn_like(xt)
             noise_st_batch = StructuredDataBatch.create_copy(state_st_batch)
@@ -423,6 +430,7 @@ class JumpSampler:
             #     breakpoint()
 
             for corrector_idx in range(corrector_steps):
+                print("correcting")
                 set_unfinished_lats(xt)
                 beta_tm1 = loss.noise_schedule.get_beta_t(
                     ts - self.dt
@@ -454,6 +462,7 @@ class JumpSampler:
                     * 2
                     * alpha
                 )
+                print(step_size)
                 if (
                     corrector_idx == corrector_steps - 1
                     and self.no_noise_final_step
