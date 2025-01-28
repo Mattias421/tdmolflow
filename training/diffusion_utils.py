@@ -25,7 +25,10 @@ class CFM_ODE:
 
         x1 = torch.randn_like(minibatch) # p1(x) is gaussian
         mean = (1 - times) * minibatch + times * x1
-        std = self.get_sigma(times)
+        std = torch.full_like(minibatch, self.get_sigma(times)).expand(
+            *minibatch.shape
+        )
+
 
         return mean, std, x1
 

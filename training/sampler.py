@@ -164,12 +164,12 @@ class JumpSampler:
                 mean, std = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
                 score = -(1 / torch.clamp(std, min=0.001)) * D_xt
             elif loss.noise_schedule_name == "cfm_ode":
-                score = D_xt
+                mean, std, _ = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
+                score = -(1 / torch.clamp(std, min=0.1)) * D_xt
 
             return score, rate_xt, mean_std
         else:
-            print("WARNING, CFM NOT IMPLEMENTED")
-            raise NotImplementedError
+            raise NotImplementedError("WARNING, CFM NOT IMPLEMENTED")
             flat_lats = state_st_batch.get_flat_lats().detach()
             flat_lats.requires_grad = True
             state_st_batch.set_flat_lats(flat_lats)
@@ -365,9 +365,9 @@ class JumpSampler:
                     B=B, include_obs=False, include_onehot_channels=True
                 ).to(device)
 
+
                 xt = xt + mask * self.dt * score
 
-            # TODO this noise is just for corrector? is corrector used/useful?
             noise = rnd.randn_like(xt)
             noise_st_batch = StructuredDataBatch.create_copy(state_st_batch)
             noise_st_batch.set_flat_lats(noise)
@@ -421,18 +421,18 @@ class JumpSampler:
             xt = state_st_batch.get_flat_lats().detach()
             # if increase_mask.sum() > 0:
             #     breakpoint()
-
+            
             for corrector_idx in range(corrector_steps):
                 set_unfinished_lats(xt)
                 beta_tm1 = loss.noise_schedule.get_beta_t(
-                    ts - self.dt
+                   ts - self.dt
                 )  # (B, problem_dim)
                 beta_tm1 = state_st_batch.convert_problem_dim_to_tensor_dim(
-                    beta_tm1
+                   beta_tm1
                 )  # (B, tensor_dim)
 
                 score, rate_xt, mean_std = self.get_score(
-                    state_st_batch, net, loss, ts - self.dt, dataset_obj, rnd
+                   state_st_batch, net, loss, ts - self.dt, dataset_obj, rnd
                 )
                 nfe += 1
 
@@ -443,85 +443,85 @@ class JumpSampler:
                 noise_st_batch.gs.adjust_st_batch(noise_st_batch)
                 noise = noise_st_batch.get_flat_lats()
                 grad_norm = torch.norm(
-                    score.reshape(score.shape[0], -1), dim=-1
+                   score.reshape(score.shape[0], -1), dim=-1
                 ).mean()
                 noise_norm = torch.norm(
-                    noise.reshape(noise.shape[0], -1), dim=-1
+                   noise.reshape(noise.shape[0], -1), dim=-1
                 ).mean()
                 alpha = 1 - self.dt * beta_tm1
                 step_size = (
-                    (self.corrector_snr * noise_norm / grad_norm) ** 2
-                    * 2
-                    * alpha
+                   (self.corrector_snr * noise_norm / grad_norm) ** 2
+                   * 2
+                   * alpha
                 )
                 if (
-                    corrector_idx == corrector_steps - 1
-                    and self.no_noise_final_step
-                    and will_finish
+                   corrector_idx == corrector_steps - 1
+                   and self.no_noise_final_step
+                   and will_finish
                 ):
-                    xt = xt + mask * (step_size * score)
+                   xt = xt + mask * (step_size * score)
                 else:
-                    xt = xt + mask * (
-                        step_size * score + torch.sqrt(2 * step_size) * noise
-                    )
+                   xt = xt + mask * (
+                       step_size * score + torch.sqrt(2 * step_size) * noise
+                   ) 
                 set_unfinished_lats(xt.detach())
                 state_st_batch.gs.adjust_st_batch(state_st_batch)
                 xt = state_st_batch.get_flat_lats().detach()
 
-                # jump correction
+# jump correction
                 if self.do_jump_corrector:
 
-                    rate_xt = rate_xt.squeeze(1)
-                    increase_mask = (
-                        rnd.rand((B,), device=device) < rate_xt * self.dt
-                    ) * (
-                        num_dims.to(device) < max_problem_dim
-                    )  # (B,)
-                    decrease_mask = (
-                        rnd.rand((B,), device=device)
-                        < loss.forward_rate.get_rate(None, ts - self.dt)
-                        * self.dt
-                    ) * (
-                        num_dims.to(device) > 1
-                    )  # (B,)
+                   rate_xt = rate_xt.squeeze(1)
+                   increase_mask = (
+                       rnd.rand((B,), device=device) < rate_xt * self.dt
+                   ) * (
+                       num_dims.to(device) < max_problem_dim
+                   )  # (B,)
+                   decrease_mask = (
+                       rnd.rand((B,), device=device)
+                       < loss.forward_rate.get_rate(None, ts - self.dt)
+                       * self.dt
+                   ) * (
+                       num_dims.to(device) > 1
+                   )  # (B,)
 
-                    increase_mask = (
-                        1 - is_finished.view(-1)
-                    ).bool() * increase_mask  # don't increase dimension after we've finished
-                    decrease_mask = (
-                        1 - is_finished.view(-1)
-                    ).bool() * decrease_mask  # don't decrease dimension after we've finished
+                   increase_mask = (
+                       1 - is_finished.view(-1)
+                   ).bool() * increase_mask  # don't increase dimension after we've finished
+                   decrease_mask = (
+                       1 - is_finished.view(-1)
+                   ).bool() * decrease_mask  # don't decrease dimension after we've finished
 
-                    next_dims_mask = state_st_batch.get_next_dim_added_mask(
-                        B=B, include_onehot_channels=True, include_obs=False
-                    ).to(device)
-                    mean = mean_std[0]
-                    std = torch.nn.functional.softplus(mean_std[1])
-                    new_values = next_dims_mask * (
-                        mean + rnd.randn_like(std) * std
-                    )
-                    xt[increase_mask, :] = (
-                        xt[increase_mask, :]
-                        * (1 - next_dims_mask[increase_mask, :])
-                        + new_values[increase_mask, :]
-                    )
+                   next_dims_mask = state_st_batch.get_next_dim_added_mask(
+                       B=B, include_onehot_channels=True, include_obs=False
+                   ).to(device)
+                   mean = mean_std[0]
+                   std = torch.nn.functional.softplus(mean_std[1])
+                   new_values = next_dims_mask * (
+                       mean + rnd.randn_like(std) * std
+                   )
+                   xt[increase_mask, :] = (
+                       xt[increase_mask, :]
+                       * (1 - next_dims_mask[increase_mask, :])
+                       + new_values[increase_mask, :]
+                   )
 
-                    num_dims[increase_mask.to(num_dims.device)] = (
-                        num_dims[increase_mask.to(num_dims.device)] + 1
-                    )
+                   num_dims[increase_mask.to(num_dims.device)] = (
+                       num_dims[increase_mask.to(num_dims.device)] + 1
+                   )
 
-                    state_st_batch.set_dims(num_dims)
-                    set_unfinished_lats(xt.detach())
+                   state_st_batch.set_dims(num_dims)
+                   set_unfinished_lats(xt.detach())
 
-                    # now remove any atoms
-                    num_dims[decrease_mask.to(num_dims.device)] = (
-                        num_dims[decrease_mask.to(num_dims.device)] - 1
-                    )
-                    state_st_batch.set_dims(num_dims)
-                    state_st_batch.delete_dims(new_dims=num_dims)
+                   # now remove any atoms
+                   num_dims[decrease_mask.to(num_dims.device)] = (
+                       num_dims[decrease_mask.to(num_dims.device)] - 1
+                   )
+                   state_st_batch.set_dims(num_dims)
+                   state_st_batch.delete_dims(new_dims=num_dims)
 
-                    state_st_batch.gs.adjust_st_batch(state_st_batch)
-                    xt = state_st_batch.get_flat_lats().detach()
+                   state_st_batch.gs.adjust_st_batch(state_st_batch)
+                   xt = state_st_batch.get_flat_lats().detach()
 
             dt = self.get_dt(ts)
             ts -= dt

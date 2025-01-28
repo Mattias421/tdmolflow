@@ -207,7 +207,7 @@ class JumpLossFinalDim:
 
         if self.loss_type == "cfm_loss":
             target = {"eps": noise_xT - x, "x0": x}[to_predict]
-            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) # TODO maybe square and div by 2?
+            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) # TODO does div by 2 apply to cfm?
         else:
             target = {"eps": noise, "x0": x}[to_predict]
             score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) 
