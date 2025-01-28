@@ -42,6 +42,28 @@ sampler_kwargs = {
     'no_noise_final_step': True,
 }
 
+sampler_kwargs = {
+    "class_name": "training.sampler.JumpSampler",
+    "do_jump_corrector": False,
+    "corrector_snr": 0.1,
+    "guidance_weight": 1.0,
+    "sample_near_atom": True,
+    "corrector_steps": 0,
+    "condition_type": "carbon_chain",
+    "dt": 0.001,
+    "corrector_steps_after_adding_dim": 0,
+    "do_conditioning": False,
+    "corrector_start_time": 0.1,
+    "corrector_finish_time": 0.003,
+    'dt_schedule': 'C',
+    'dt_schedule_h': 0.05,
+    'dt_schedule_l': 0.001,
+    'dt_schedule_tc': 0.5,
+    'condition_sweep_idx': 0,
+    'condition_sweep_path': None,
+    'no_noise_final_step': True,
+  }
+
 with open(model_path.joinpath('training_options.json'), "r") as stream:
     c = dnnlib.util.EasyDict(json.load(stream))
 
@@ -77,7 +99,7 @@ if dataset_class_name not in ['QM9Dataset']:
 del(c.loss_kwargs['class_name'])
 loss = JumpLossFinalDim(**c.loss_kwargs, structure=structure)
 
-batch_size = 8
+batch_size = 64
 seeds = torch.arange(batch_size)
 rnd = StackedRandomGenerator(device, seeds)
 indices = rnd.randint(len(dataset_obj), size=[batch_size, 1], device=device)
@@ -297,13 +319,13 @@ while debug_sampler:
 x0_st_batch = sampler.sample(net, in_st_batch, loss, rnd, known_dims=known_dims,
                                 dataset_obj=dataset_obj)
 
-breakpoint()
 print(dataset_obj.log_batch(in_st_batch, x0_st_batch, wandb_log=False))
 
-# num_to_plot = min(batch_size, 8)
-# for idx in range(num_to_plot):
-#     num_atoms = x0_st_batch.get_dims()[idx].item()
-#     positions = x0_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
-#     atom_types = torch.argmax(x0_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
-#     plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
-#     plt.show()
+num_to_plot = min(batch_size, 8)
+for idx in range(num_to_plot):
+    breakpoint()
+    num_atoms = x0_st_batch.get_dims()[idx].item()
+    positions = x0_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+    atom_types = torch.argmax(x0_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+    plt.show()
