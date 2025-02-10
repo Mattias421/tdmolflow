@@ -205,18 +205,14 @@ class JumpLossFinalDim:
             rate_delxt = rate_xt
             mean_std = dummy_mean_std
 
-        if self.loss_type == "cfm_loss":
-            target = {"eps": noise_xT - x, "x0": x}[to_predict]
-            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) # TODO does div by 2 apply to cfm?
-        else:
-            target = {"eps": noise, "x0": x}[to_predict]
-            score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) 
-            if self.loss_type == "edm":
-                vp_sigma = std
-                vp_alpha = torch.sqrt(1 - vp_sigma**2)
-                ve_sigma = vp_sigma / vp_alpha
-                weights = (ve_sigma**2 + 1) / ve_sigma**2
-                score_loss = score_loss * weights
+        target = {"eps": noise, "x0": x}[to_predict]
+        score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) 
+        if self.loss_type == "edm":
+            vp_sigma = std
+            vp_alpha = torch.sqrt(1 - vp_sigma**2)
+            ve_sigma = vp_sigma / vp_alpha
+            weights = (ve_sigma**2 + 1) / ve_sigma**2
+            score_loss = score_loss * weights
 
         f_rate_vs_t = self.forward_rate.get_rate(dims_xt, ts).to(device)  # (B,)
 
