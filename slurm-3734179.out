@@ -1,6 +1,0 @@
-Usage: train.py [OPTIONS]
-Try 'train.py --help' for help.
-
-Error: No such option: --resume_from_latest_resume_id Did you mean --resume_latest_from_resume_id?
-using rdkit
-/var/spool/slurmd/job3734179/slurm_script: line 32: oqnd4apl: command not found

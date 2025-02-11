@@ -1,7 +1,0 @@
-Usage: train.py [OPTIONS]
-Try 'train.py --help' for help.
-
-Error: Got unexpected extra argument (oqnd4apl)
-using rdkit
-parse_int_list 0,0,0,1,1,1,1,1,1
-parse_int_list 1,1,1,1,1,1,1,1,1

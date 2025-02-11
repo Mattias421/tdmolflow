@@ -1,15 +1,0 @@
-/mnt/fastdata/acq22mc/exp/tdmolflow/generate.py:70: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
-  net = torch.load(f'{model_folder}/state_dict.pt')["net"]
-using rdkit
-Loading training options from results/vanilla/training-runs/tddm_base//training_options.json...
-Loading dataset...
-training.dataset.QM9Dataset () {'subset': -1, 'pos_norm': 1.0, 'charge_norm': 10.0, 'random_rotation': False, 'condition_on_alpha': False, 'shuffle_node_ordering': True, 'train_or_valid': 'train', 'atom_type_norm': 0.25, 'only_second_half': False}
-------- making QM9 dataset --------
-Entropy of n_nodes: H[N] -2.475700616836548
-QM9 Dataset Length 100000
-Created structure with observedness [0 0 0 1 1 1 1 1 1]
-Constructing network...
-training.sampler.JumpSampler () {'corrector_finish_time': 0.003, 'guidance_weight': 1.0, 'dt_schedule_h': 0.05, 'corrector_start_time': 0.1, 'sample_near_atom': True, 'dt_schedule_l': 0.001, 'dt_schedule_tc': 0.5, 'dt': 0.001, 'condition_sweep_idx': 0, 'do_jump_corrector': False, 'condition_sweep_path': None, 'corrector_snr': 0.1, 'corrector_steps': 0, 'dt_schedule': 'uniform', 'no_noise_final_step': False, 'condition_type': 'sweep', 'do_conditioning': False, 'structure': <training.structure.Structure object at 0x2afd061e8e90>}
-training.loss.JumpLossFinalDim () {'nearest_atom_loss_weight': 1.0, 'min_t': 0.001, 'rate_cut_t': 0.1, 'score_loss_weight': 1.0, 'nearest_atom_pred': True, 'rate_function_name': 'step', 'noise_schedule_name': 'vp_sde', 'rate_loss_weight': 1.0, 'auto_loss_weight': 1.0, 'x0_logit_ce_loss_weight': 1.0, 'mean_or_sum_over_dim': 'mean', 'vp_sde_beta_min': 0.1, 'vp_sde_beta_max': 20.0, 'loss_type': 'eps', 'structure': <training.structure.Structure object at 0x2afd061e8e90>}
-Generating 10000 molecules in 313 batches...
-Generating Molecules:   0%|          | 0/313 [00:00<?, ?it/s]Generating Molecules:   0%|          | 1/313 [01:33<8:06:38, 93.58s/it]Generating Molecules:   1%|          | 2/313 [03:04<7:56:43, 91.97s/it]Generating Molecules:   1%|          | 3/313 [04:33<7:49:20, 90.84s/it]Generating Molecules:   1%|▏         | 4/313 [06:02<7:43:39, 90.03s/it]Generating Molecules:   2%|▏         | 5/313 [07:31<7:39:51, 89.58s/it]

@@ -1,9 +1,0 @@
-  File "/mnt/fastdata/acq22mc/exp/tdmolflow/generate.py", line 148
-    parser = argparse.ArgumentParser(description="Generate molecules using
-                                                 ^
-SyntaxError: unterminated string literal (detected at line 148)
-  File "/mnt/fastdata/acq22mc/exp/tdmolflow/evaluate.py", line 55
-    parser = argparse.ArgumentParser(description="Generate molecules using
-                                                 ^
-SyntaxError: unterminated string literal (detected at line 55)
-jobs done
