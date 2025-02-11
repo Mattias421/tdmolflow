@@ -9,6 +9,7 @@ import copy
 import numpy as np
 import torch
 from tqdm import tqdm
+import argparse
 
 import dnnlib
 from torch_utils import distributed as dist
@@ -145,16 +146,20 @@ def generate_molecules(
 # ----------------------------------------------------------------------------
 if __name__ == "__main__":
     
-    model_folder = "models_pretrained/cfm_dev"   
+    parser = argparse.ArgumentParser()
 
-    # Number of molecules to generate.
-    num_molecules = 10000
+    parser.add_argument("--model_folder", type=str,
+        default="models_pretrained/cfm_dev",
+                            help="Path to the pretrained model folder.")
+    parser.add_argument("--num_molecules", type=int, default=10000,
+                            help="Number of molecules to generate.")
+    args = parser.parse_args()
 
     # CUDA device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     generate_molecules(
-        model_folder,
+        args.model_folder,
         device=device,
-        num_molecules=num_molecules,
+        num_molecules=args.num_molecules,
     )

@@ -6,6 +6,7 @@ import glob
 import os
 import pickle
 from tqdm import tqdm
+import argparse
 
 from training.dataset.qm9 import analyze_stability_for_molecules
 
@@ -52,14 +53,17 @@ def evaluate_molecules(model_folder):
 
 if __name__ == "__main__":
     
-    model_folder = "models_pretrained/cfm_dev/"   
-
-    # Number of molecules to generate.
-    num_molecules = 10000
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_folder", type=str,
+        default="models_pretrained/cfm_dev",
+                            help="Path to the pretrained model folder.")
+    parser.add_argument("--num_molecules", type=int, default=10000,
+                            help="Number of molecules to generate.")
+    args = parser.parse_args()
 
     # CUDA device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     evaluate_molecules(
-        model_folder,
+        args.model_folder,
     )
