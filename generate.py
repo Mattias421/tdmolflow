@@ -123,6 +123,8 @@ def generate_molecules(
             node_mask = node_mask.unsqueeze(2).to(device)
 
             molecules["node_mask"] = node_mask
+
+            breakpoint()
             
             with open(f'{run_dir}/batch_{i}.pkl', 'wb') as handle:
               pickle.dump(molecules, handle, protocol=pickle.HIGHEST_PROTOCOL)
