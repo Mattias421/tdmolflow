@@ -162,10 +162,10 @@ class JumpSampler:
 
             if loss.noise_schedule_name == "vp_sde":
                 mean, std = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
-                score = -(1 / torch.clamp(std, min=0.001)) * D_xt
+                score = -(1 / torch.clamp(std, min=0.1)) * D_xt
             elif loss.noise_schedule_name == "cfm_ode":
                 mean, std, _ = loss.noise_schedule.get_p0t_stats(state_st_batch, ts)
-                score = -(1 / torch.clamp(std, min=0.001)) * D_xt
+                score = -(1 / torch.clamp(std, min=0.1)) * D_xt
 
             return score, rate_xt, mean_std
         else:

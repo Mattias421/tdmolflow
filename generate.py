@@ -4,24 +4,76 @@ import os
 import pickle
 import time
 import json
-import copy
 
 import numpy as np
 import torch
+from training.dataset.qm9 import plot_data3d
 from tqdm import tqdm
 import argparse
+import matplotlib.pyplot as plt
 
 import dnnlib
 from torch_utils import distributed as dist
-from training.sampler import StackedRandomGenerator
+from training.sampler import StackedRandomGenerator, samplers_to_kwargs
 from training.structure import Structure, StructuredDataBatch
+from training.loss import JumpLossFinalDim
 
+sampler_class = 'JumpSampler'
+
+sampler_kwargs = {
+    'dt': 0.001,
+    'corrector_steps': 5,
+    'corrector_snr': 0.3,
+    'corrector_start_time': 0.1,
+    'corrector_finish_time': 0.003,
+    'do_conditioning': False,
+    'condition_type': 'sweep',
+    'condition_sweep_idx': 0,
+    'condition_sweep_path': None,
+    'guidance_weight': 1.0,
+    'do_jump_corrector': False,
+    'sample_near_atom': True,
+    'dt_schedule': 'C',
+    'dt_schedule_h': 0.05,
+    'dt_schedule_l': 0.001,
+    'dt_schedule_tc': 0.5,
+    'no_noise_final_step': True,
+}
+
+# sampler_kwargs = {
+#     "class_name": "training.sampler.JumpSampler",
+#     "do_jump_corrector": False,
+#     "corrector_snr": 0.1,
+#     "guidance_weight": 1.0,
+#     "sample_near_atom": True,
+#     "corrector_steps": 0,
+#     "condition_type": "sweep",
+#     "dt": 0.001,
+#     "corrector_steps_after_adding_dim": 0,
+#     "do_conditioning": False,
+#     "corrector_start_time": 0.1,
+#     "corrector_finish_time": 0.003,
+#     'no_noise_final_step': False,
+#     'condition_sweep_path': None,
+#     'condition_sweep_idx': 0,
+#     'dt_schedule': 'uniform',
+#     'dt_schedule_h': 0.05,
+#     'dt_schedule_l': 0.001,
+#     'dt_schedule_tc': 0.5,
+# }
+
+def convert_inner_dicts_to_easydicts(input_dict):
+    for key in input_dict.keys():
+        if type(input_dict[key]) == dict:
+            input_dict[key] = convert_inner_dicts_to_easydicts(input_dict[key])
+    input_dict = dnnlib.util.EasyDict(input_dict)
+    return input_dict
 
 def generate_molecules(
     model_folder,
-    resume_pkl=None,  # Start from the given network snapshot, None = random initialization.
     device=torch.device("cuda"),
     num_molecules=10000,
+    plot_data=True,
 ):
     """Generates a specified number of molecules using a pretrained model."""
     
@@ -43,45 +95,45 @@ def generate_molecules(
     # Load training options from JSON.
     training_options_path = f"{model_folder}/training_options.json"
     dist.print0(f"Loading training options from {training_options_path}...")
-    with open(training_options_path, "r") as f:
-        training_options = json.load(f)
 
-    # Extract kwargs from training options.
-    dataset_kwargs = training_options["dataset_kwargs"]
-    data_loader_kwargs = training_options["data_loader_kwargs"]
-    network_kwargs = training_options["network_kwargs"]
-    loss_kwargs = training_options["loss_kwargs"]
-    sampler_kwargs = training_options["sampler_kwargs"]
-    structure_kwargs = training_options["structure_kwargs"]
+    with open(training_options_path, "r") as stream:
+        c = dnnlib.util.EasyDict(json.load(stream))
 
-    # Load dataset (needed for structure and other dataset-specific info).
-    dist.print0("Loading dataset...")
-    train_dataset_kwargs = copy.deepcopy(dataset_kwargs)
-    train_dataset_kwargs["train_or_valid"] = "train"  # Or "valid" if you prefer
-    dataset_obj = dnnlib.util.construct_class_by_name(
-        **train_dataset_kwargs
-    )  # subclass of training.dataset.Dataset
+    c = convert_inner_dicts_to_easydicts(c)
 
-    # Construct objects describing problem structure.
-    structure = Structure(**structure_kwargs, dataset=dataset_obj)
+    c.dataset_kwargs['train_or_valid'] = "valid"
+    dataset_obj = dnnlib.util.construct_class_by_name(**c.dataset_kwargs)
 
-    # Construct network.
+    structure = Structure(**c.structure_kwargs, dataset=dataset_obj)
+
     dist.print0("Constructing network...")
-    net = torch.load(f'{model_folder}/state_dict.pt')["net"]
+    net_state = torch.load(f'{model_folder}/state_dict.pt')
+    if "net" in net_state.keys():
+        net = net_state["net"]
+    else:
+        net = dnnlib.util.construct_class_by_name(**c.network_kwargs, structure=structure)
+        net.load_state_dict(net_state)
     net.eval().requires_grad_(False).to(device)  # Set to eval mode
 
     # Setup sampler
-    sampler = dnnlib.util.construct_class_by_name(
-        **sampler_kwargs, structure=structure
-    )
+    sampler_class_name = 'training.sampler.' + sampler_class
+    usable_sampler_kwargs = dnnlib.EasyDict(class_name=sampler_class_name)
+    for kwarg_name, _, _ in samplers_to_kwargs[sampler_class]:
+        # new_kwarg_name = "_".join(kwarg_name.split("_")[1:])
+        usable_sampler_kwargs[kwarg_name] = sampler_kwargs[kwarg_name]
+    sampler = dnnlib.util.construct_class_by_name(**usable_sampler_kwargs, structure=structure)
 
-    loss_fn = dnnlib.util.construct_class_by_name(
-        **loss_kwargs, structure=structure
-    )  # training.loss.(VP|VE|EDM)Loss
+    # infer the task from the dataset
+    dataset_class_name = c.dataset_kwargs['class_name'].split('training.dataset.')[1]
+    if dataset_class_name not in ['QM9Dataset']:
+        raise ValueError('Unknown dataset: ', dataset_class_name)
+
+    del(c.loss_kwargs['class_name'])
+    loss = JumpLossFinalDim(**c.loss_kwargs, structure=structure)
 
     generated_molecules = []
     start_time = time.time()
-    batch_size = data_loader_kwargs.get("batch_size", 32)  # Adjust batch size as needed
+    batch_size = 50  # Adjust batch size as needed
     num_batches = (num_molecules + batch_size - 1) // batch_size
 
     dist.print0(f"Generating {num_molecules} molecules in {num_batches} batches...")
@@ -104,16 +156,11 @@ def generate_molecules(
                 torch.stack(d).to(device) for d in zip(*unstacked_data_no_dims)
             )
             
-            st_batch = StructuredDataBatch(
-                data,
-                dims,
-                structure_kwargs["observed"],
-                structure_kwargs["exist"],
-                dataset_obj.is_onehot,
-                structure.graphical_structure,
+            st_batch = StructuredDataBatch(data, dims, structure.observed,
+                structure.exist, dataset_obj.is_onehot, structure.graphical_structure
             )
 
-            x0_st_batch = sampler.sample(net, st_batch, loss_fn, rnd, dataset_obj=dataset_obj)
+            x0_st_batch = sampler.sample(net, st_batch, loss, rnd, dataset_obj=dataset_obj)
             molecules = {
               "x": x0_st_batch.tuple_batch[0],
               "one_hot": x0_st_batch.tuple_batch[1],
@@ -125,7 +172,14 @@ def generate_molecules(
 
             molecules["node_mask"] = node_mask
 
-            breakpoint()
+            if plot_data:
+                idx = 0
+                for idx in range(batch_size):
+                    num_atoms = x0_st_batch.get_dims()[idx].item()
+                    positions = x0_st_batch.tuple_batch[0][idx, 0:num_atoms, :].cpu().detach()
+                    atom_types = torch.argmax(x0_st_batch.tuple_batch[1][idx, 0:num_atoms, :], dim=1).cpu().detach()
+                    plot_data3d(positions, atom_types, dataset_obj.dataset_info, spheres_3d=False)
+                    plt.show()
             
             with open(f'{run_dir}/batch_{i}.pkl', 'wb') as handle:
               pickle.dump(molecules, handle, protocol=pickle.HIGHEST_PROTOCOL)

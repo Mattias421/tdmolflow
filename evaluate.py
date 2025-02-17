@@ -48,6 +48,7 @@ def evaluate_molecules(model_folder):
             combined_dict["Novelty"] = rdkit_tuple[0][2]
 
         print(f"{i},{combined_dict['atm_stable']},{combined_dict['mol_stable']},{combined_dict['Validity']},{combined_dict['Uniqueness']},{combined_dict['Novelty']}", file=results_csv)
+        print(f"{i},{combined_dict['atm_stable']},{combined_dict['mol_stable']},{combined_dict['Validity']},{combined_dict['Uniqueness']},{combined_dict['Novelty']}")
 
     results_csv.close()
 
