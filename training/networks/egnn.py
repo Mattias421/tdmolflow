@@ -133,9 +133,7 @@ class EGNNMultiHeadJump(nn.Module):
                     dropout=0,
                     temb_channels=self.temb_dim,
                 )
-                for _ in range(n_attn_blocks)
-            ]
-        )
+                for _ in range(n_attn_blocks) ])
         self.vec_weighting_proj = nn.Linear(self.transformer_dim, 1)
 
         self.pre_auto_proj = nn.Linear(
@@ -230,6 +228,8 @@ class EGNNMultiHeadJump(nn.Module):
         x_out = net_out[:, :, 0:3]
         atom_type_one_hot_out = net_out[:, :, 3:8]
         charges_out = net_out[:, :, 8:9]
+
+        # TODO where does one_hot get multiplied by 4? ie atom_type_one_hot_out *= 4
 
         D_xt = torch.cat(
             [

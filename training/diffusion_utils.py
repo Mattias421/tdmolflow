@@ -1,13 +1,18 @@
 import math
 
 import torch
+from torchcfm.optimal_transport import OTPlanSampler
 
 class CFM_ODE:
-    def __init__(self, max_dim, sigma):
+    def __init__(self, max_dim, sigma, ot_minibatch=False):
         super().__init__()
         self.max_dim = max_dim
 
         self.beta_min = sigma
+
+        if ot_minibatch:
+            self.ot_minibatch = ot_minibatch
+            self.ot_sampler = OTPlanSampler(method="exact")
 
     def get_beta_t(self, ts):
         return torch.full_like(ts, self.beta_min).view(-1, 1).repeat(1, self.max_dim) # TODO check
@@ -24,6 +29,10 @@ class CFM_ODE:
         )
 
         x1 = torch.randn_like(minibatch) # p1(x) is gaussian
+
+        if self.ot_minibatch:
+            x1, minibatch = self.ot_sampler.sample_plan(x1, minibatch)
+
         mean = (1 - times) * minibatch + times * x1
         std = torch.full_like(minibatch, self.get_sigma(times)).expand(
             *minibatch.shape

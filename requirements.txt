@@ -1,3 +1,4 @@
+torchcfm
 click
 matplotlib
 rdkit
