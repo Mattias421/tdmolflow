@@ -2325,7 +2325,9 @@ def get_bond_order(atom1, atom2, distance, check_exists=False):
                         return 3  # Triple
                 return 2  # Double
         return 1  # Single
-    return 0  # No bond
+    else:
+        # print(distance - (bonds1[atom1][atom2] + margin2))
+        return 0  # No bond
 
 
 # ----------------------- end from qm9/analyze --------------------------------

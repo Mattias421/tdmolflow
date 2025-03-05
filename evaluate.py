@@ -30,7 +30,7 @@ def evaluate_molecules(model_folder):
     print("BATCH,ATM_STB,MOL_STB,VALID,UNIQ,NOVEL", file=results_csv)
     print(mol_folder)
 
-    for i in tqdm(range(num_batches), desc="Generating Molecules"):
+    for i in tqdm(range(num_batches), desc="Evaluating Molecules"):
             
         with open(f'{mol_folder}/batch_{i}.pkl', 'rb') as handle:
             molecules = pickle.load(handle, encoding='unicode_escape')
