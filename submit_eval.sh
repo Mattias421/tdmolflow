@@ -18,7 +18,7 @@ export WANDB_PROJECT=tdmolflow
 
 model_folder=$1
 
-python generate.py --model_folder $model_folder
+# python generate.py --model_folder $model_folder
 
 python evaluate.py --model_folder $model_folder
 
