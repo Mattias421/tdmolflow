@@ -461,6 +461,7 @@ class JumpSampler:
                 ):
                    xt = xt + mask * (step_size * score)
                 else:
+                    # TODO does this need to be changed for CFM?
                    xt = xt + mask * (
                        step_size * score + torch.sqrt(2 * step_size) * noise
                    ) 

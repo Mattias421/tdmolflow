@@ -29,13 +29,13 @@ def get_forward_rate(rate_function_name, max_problem_dim, rate_cut_t):
 
 
 def get_noise_schedule(
-    noise_schedule_name, max_problem_dim, vp_sde_beta_min, vp_sde_beta_max
+    noise_schedule_name, max_problem_dim, vp_sde_beta_min, vp_sde_beta_max, ot_minibatch,
 ):
     if noise_schedule_name == "vp_sde":
         # DDPM schedule is beta_min=0.1, beta_max=20
         return VP_SDE(max_problem_dim, vp_sde_beta_min, vp_sde_beta_max)
     elif noise_schedule_name == "cfm_ode":
-        return CFM_ODE(max_problem_dim, vp_sde_beta_min)
+        return CFM_ODE(max_problem_dim, vp_sde_beta_min, ot_minibatch)
     else:
         raise ValueError(noise_schedule_name)
 
@@ -49,6 +49,7 @@ class JumpLossFinalDim:
         min_t,
         vp_sde_beta_min,
         vp_sde_beta_max,
+        ot_minibatch,
         rate_cut_t,
         loss_type,
         x0_logit_ce_loss_weight,
@@ -76,6 +77,7 @@ class JumpLossFinalDim:
             self.structure.graphical_structure.max_problem_dim,
             vp_sde_beta_min,
             vp_sde_beta_max,
+            ot_minibatch,
         )
 
         self.x0_logit_ce_loss_weight = x0_logit_ce_loss_weight
@@ -313,6 +315,7 @@ JumpLossFinalDim_to_kwargs = {
             ("min_t", "float", 0.001),
             ("vp_sde_beta_min", "float", 0.1),
             ("vp_sde_beta_max", "float", 20.0),
+            ("ot_minibatch", "str2bool", "False"),
             ("rate_cut_t", "float", 0.5),
             ("loss_type", "str", "eps"),
             ("x0_logit_ce_loss_weight", "float", 0.1),

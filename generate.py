@@ -73,7 +73,7 @@ def generate_molecules(
     model_folder,
     device=torch.device("cuda"),
     num_molecules=10000,
-    plot_data=True,
+    plot_data=False,
 ):
     """Generates a specified number of molecules using a pretrained model."""
     
@@ -209,6 +209,7 @@ if __name__ == "__main__":
                             help="Path to the pretrained model folder.")
     parser.add_argument("--num_molecules", type=int, default=10000,
                             help="Number of molecules to generate.")
+    parser.add_argument("--plot", type=bool, default=False)
     args = parser.parse_args()
 
     # CUDA device
@@ -218,4 +219,5 @@ if __name__ == "__main__":
         args.model_folder,
         device=device,
         num_molecules=args.num_molecules,
+        plot_data=args.plot,
     )

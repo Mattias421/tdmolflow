@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=tdflow
-#SBATCH --partition=gpu
-#SBATCH --qos=gpu
+#SBATCH --partition=dcs-gpu
+#SBATCH --account=dcs-res
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
 #SBATCH --time=168:00:00
@@ -13,6 +13,7 @@ source activate tdmolflow
 
 export WANDB_ENTITY=mattias421
 export WANDB_PROJECT=tdmolflow
+export WANDB_NAME=otcfm
 
 sigmas=(0.1 0.2 0.3)
 
@@ -26,6 +27,7 @@ python train.py --workers 8 --sample 50 --batch 64 --lr 0.00003 --ema 0.5 \
     --jumplossfinaldim_rate_function_name step --jumplossfinaldim_rate_cut_t 0.1 \
     --jumplossfinaldim_mean_or_sum_over_dim mean --jumplossfinaldim_noise_schedule_name cfm_ode \
     --jumplossfinaldim_vp_sde_beta_min $sigma \
+    --jumplossfinaldim_ot_minibatch True \
     --jumplossfinaldim_x0_logit_ce_loss_weight 1.0 --jumplossfinaldim_nearest_atom_pred True \
     --sampler_class JumpSampler --jumpsampler_sample_near_atom True --network_class EGNNMultiHeadJump \
     --egnnmultiheadjump_detach_last_layer True --egnnmultiheadjump_rate_use_x0_pred True \

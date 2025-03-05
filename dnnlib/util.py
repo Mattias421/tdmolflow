@@ -277,7 +277,7 @@ def get_module_from_obj_name(obj_name: str) -> Tuple[types.ModuleType, str]:
         except:
             pass
 
-    # maybe some of the modules themselves contain errors?
+    # maybe some of the modules thvggemselves contain errors?
     for module_name, _local_obj_name in name_pairs:
         try:
             importlib.import_module(module_name)  # may raise ImportError
