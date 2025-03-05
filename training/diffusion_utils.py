@@ -10,8 +10,9 @@ class CFM_ODE:
 
         self.beta_min = sigma
 
+        self.ot_minibatch = ot_minibatch
+
         if ot_minibatch:
-            self.ot_minibatch = ot_minibatch
             self.ot_sampler = OTPlanSampler(method="exact")
 
     def get_beta_t(self, ts):

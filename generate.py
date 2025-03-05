@@ -40,28 +40,6 @@ sampler_kwargs = {
     'no_noise_final_step': True,
 }
 
-# sampler_kwargs = {
-#     "class_name": "training.sampler.JumpSampler",
-#     "do_jump_corrector": False,
-#     "corrector_snr": 0.1,
-#     "guidance_weight": 1.0,
-#     "sample_near_atom": True,
-#     "corrector_steps": 0,
-#     "condition_type": "sweep",
-#     "dt": 0.001,
-#     "corrector_steps_after_adding_dim": 0,
-#     "do_conditioning": False,
-#     "corrector_start_time": 0.1,
-#     "corrector_finish_time": 0.003,
-#     'no_noise_final_step': False,
-#     'condition_sweep_path': None,
-#     'condition_sweep_idx': 0,
-#     'dt_schedule': 'uniform',
-#     'dt_schedule_h': 0.05,
-#     'dt_schedule_l': 0.001,
-#     'dt_schedule_tc': 0.5,
-# }
-
 def convert_inner_dicts_to_easydicts(input_dict):
     for key in input_dict.keys():
         if type(input_dict[key]) == dict:
@@ -101,8 +79,7 @@ def generate_molecules(
 
     c = convert_inner_dicts_to_easydicts(c)
 
-    c.dataset_kwargs['train_or_valid'] = "valid"
-    dataset_obj = dnnlib.util.construct_class_by_name(**c.dataset_kwargs)
+    dataset_obj = dnnlib.util.construct_class_by_name(**c.dataset_kwargs, train_or_valid='valid')
 
     structure = Structure(**c.structure_kwargs, dataset=dataset_obj)
 
@@ -160,7 +137,8 @@ def generate_molecules(
                 structure.exist, dataset_obj.is_onehot, structure.graphical_structure
             )
 
-            x0_st_batch = sampler.sample(net, st_batch, loss, rnd, dataset_obj=dataset_obj)
+            known_dims = None
+            x0_st_batch = sampler.sample(net, st_batch, loss, rnd, known_dims=known_dims, dataset_obj=dataset_obj)
             molecules = {
               "x": x0_st_batch.tuple_batch[0],
               "one_hot": x0_st_batch.tuple_batch[1],
@@ -171,6 +149,7 @@ def generate_molecules(
             node_mask = node_mask.unsqueeze(2).to(device)
 
             molecules["node_mask"] = node_mask
+
 
             if plot_data:
                 idx = 0
