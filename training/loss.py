@@ -209,7 +209,7 @@ class JumpLossFinalDim:
 
         target = {"eps": noise, "x0": x}[to_predict]
         if to_predict == "eps" and self.noise_schedule_name == "cfm_ode":
-            target = noise_xT - x
+            target = x - noise_xT 
 
         score_loss = 0.5 * D_xt_mask * ((D_xt - target) ** 2) 
         if self.loss_type == "edm":
